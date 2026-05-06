@@ -16,8 +16,7 @@ function updateMassiveScanSummary() {
     const modeLabels = {
         'all': 'All Images',
         'unscanned': 'Only Unscanned Images',
-        'older': `Images Older Than ${ageValue} ${ageUnit}`,
-        'never-scanned': 'Never Scanned'
+        'older': `Images Older Than ${ageValue} ${ageUnit}`
     };
     
     let summaryEl = document.getElementById('massiveScanSummary');
@@ -41,7 +40,7 @@ function updateMassiveScanSummary() {
     // Update button state
     const runBtn = document.getElementById('runMassiveScan');
     if (runBtn) {
-        if (!registry) {
+        if (!currentMassiveScanRegistry) {
             runBtn.disabled = true;
         } else {
             runBtn.disabled = false;
@@ -49,17 +48,11 @@ function updateMassiveScanSummary() {
     }
 }
 
-// Update mode UI when selection changes
 function updateMassiveScanModeUI() {
     const modeSelect = document.getElementById('massiveScanMode');
     const ageGroup = document.getElementById('massiveScanAgeGroup');
     if (!modeSelect || !ageGroup) return;
-    
-    if (modeSelect.value === 'older') {
-        ageGroup.style.display = 'block';
-    } else {
-        ageGroup.style.display = 'none';
-    }
+    ageGroup.style.display = modeSelect.value === 'older' ? 'block' : 'none';
     updateMassiveScanSummary();
 }
 
@@ -74,7 +67,6 @@ function populateMassiveScanRepoDropdown(registryName) {
         document.getElementById('massiveScanSummary').innerHTML = '<p class="text-muted">Seleziona un registry per iniziare</p>';
         return;
     }
-    
     fetch(`/api/repositories/${encodeURIComponent(registryName)}`)
         .then(r => {
             if (!r.ok) throw new Error('Network response was not ok');
@@ -83,32 +75,20 @@ function populateMassiveScanRepoDropdown(registryName) {
         .then(data => {
             const select = document.getElementById('massiveScanRepoPattern');
             if (!select) return;
-            
             const selectedValue = select.value;
             select.innerHTML = '<option value="*">* (All repositories)</option>';
             select.disabled = false;
-            
             data.repositories.forEach(repo => {
                 const option = document.createElement('option');
                 option.value = repo;
                 option.textContent = repo;
                 select.appendChild(option);
             });
-            
-            if (selectedValue && document.getElementById('massiveScanRepoPattern')) {
-                const s = document.getElementById('massiveScanRepoPattern');
-                if (s) s.value = selectedValue;
-            }
-            
-            // Add wildcard patterns
             const prefixes = new Set();
             data.repositories.forEach(repo => {
                 const parts = repo.split('/');
-                if (parts.length > 1) {
-                    prefixes.add(parts[0] + '/*');
-                }
+                if (parts.length > 1) prefixes.add(parts[0] + '/*');
             });
-            
             if (prefixes.size > 0) {
                 const optgroup = document.createElement('optgroup');
                 optgroup.label = 'Wildcard Patterns';
@@ -120,110 +100,17 @@ function populateMassiveScanRepoDropdown(registryName) {
                 });
                 select.appendChild(optgroup);
             }
-            
             updateMassiveScanSummary();
         })
         .catch(err => {
-            console.error('Failed to load repositories:', err);
             const select = document.getElementById('massiveScanRepoPattern');
             if (select) {
-                select.innerHTML = '<option value="*">* (Errore caricamento)</option>';
+                select.innerHTML = '<option value="*">* (Errore)</option>';
                 select.disabled = true;
             }
         });
 }
 
-// Reset results display
-function resetMassiveScanResults() {
-    const totalEl = document.getElementById('massiveScanTotal');
-    const scannedEl = document.getElementById('massiveScanScanned');
-    const skippedEl = document.getElementById('massiveScanSkipped');
-    const errorsEl = document.getElementById('massiveScanErrors');
-    const resultsEl = document.getElementById('massiveScanResults');
-    const progressBar = document.getElementById('massiveScanProgressBar');
-    const progressBarInner = document.getElementById('massiveScanProgressBarInner');
-    
-    if (totalEl) totalEl.textContent = '0';
-    if (scannedEl) scannedEl.textContent = '0';
-    if (skippedEl) skippedEl.textContent = '0';
-    if (errorsEl) errorsEl.textContent = '0';
-    if (resultsEl) resultsEl.innerHTML = '<p class="text-muted">Run scan to see results...</p>';
-    if (progressBar) progressBar.style.display = 'none';
-    if (progressBarInner) progressBarInner.style.width = '0%';
-    
-    massiveScanResults = [];
-}
-
-// Render scan results
-function renderMassiveScanResults() {
-    const container = document.getElementById('massiveScanResults');
-    const totalEl = document.getElementById('massiveScanTotal');
-    const scannedEl = document.getElementById('massiveScanScanned');
-    const skippedEl = document.getElementById('massiveScanSkipped');
-    const errorsEl = document.getElementById('massiveScanErrors');
-    
-    if (!container || !totalEl || !scannedEl || !skippedEl || !errorsEl) return;
-    
-    let scanned = 0, skipped = 0, errors = 0;
-    massiveScanResults.forEach(r => {
-        if (r.status === 'success' || r.status === 'dry-run') scanned++;
-        else if (r.status === 'skipped') skipped++;
-        else if (r.status === 'error') errors++;
-    });
-    
-    totalEl.textContent = massiveScanResults.length;
-    scannedEl.textContent = scanned;
-    skippedEl.textContent = skipped;
-    errorsEl.textContent = errors;
-    
-    if (massiveScanResults.length === 0) {
-        container.innerHTML = '<p class="text-muted">No results yet...</p>';
-        return;
-    }
-    
-    let html = '<div class="table-responsive"><table class="table table-sm table-hover"><thead><tr><th>Image</th><th>Status</th><th>Vulnerabilities</th><th>Last Scan</th><th>Age</th></tr></thead><tbody>';
-    
-    const recentResults = massiveScanResults.slice(-50);
-    recentResults.forEach(r => {
-        const imageName = `${r.repo}:${r.tag}`;
-        let statusHtml = '';
-        let vulnHtml = '-';
-        let lastScanHtml = '-';
-        let ageHtml = '-';
-        
-        if (r.status === 'success' && r.result) {
-            statusHtml = '<span class="badge bg-success"><i class="bi bi-check-circle"></i> Scanned</span>';
-            const total = r.result.total || 0;
-            const badgeClass = total === 0 ? 'bg-success' : total < 5 ? 'bg-warning' : total < 20 ? 'bg-danger' : 'bg-dark';
-            vulnHtml = `<span class="badge ${badgeClass}">${total}</span>`;
-            if (r.result.summary) {
-                vulnHtml += `<br><small>C:${r.result.summary.CRITICAL||0} H:${r.result.summary.HIGH||0} M:${r.result.summary.MEDIUM||0} L:${r.result.summary.LOW||0}</small>`;
-            }
-            lastScanHtml = r.result.scannedAt ? formatTimeAgo(r.result.scannedAt) : 'Just now';
-        } else if (r.status === 'dry-run') {
-            statusHtml = '<span class="badge bg-warning"><i class="bi bi-eye"></i> Preview</span>';
-            vulnHtml = '<span class="text-muted">N/A</span>';
-        } else if (r.status === 'skipped') {
-            statusHtml = '<span class="badge bg-secondary"><i class="bi bi-skip-end"></i> Skipped</span>';
-        } else if (r.status === 'error') {
-            statusHtml = '<span class="badge bg-danger"><i class="bi bi-x-circle"></i> Error</span>';
-        }
-        
-        if (r.details && r.details.created) {
-            ageHtml = formatTimeAgo(r.details.created);
-        }
-        
-        html += '<tr><td><small>' + imageName + '</small></td><td>' + statusHtml + '</td><td>' + vulnHtml + '</td><td><small>' + lastScanHtml + '</small></td><td><small>' + ageHtml + '</small></td></tr>';
-    });
-    
-    html += '</tbody></table></div>';
-    if (massiveScanResults.length > 50) {
-        html += '<p class="text-muted text-center">Showing last 50 of ' + massiveScanResults.length + ' results</p>';
-    }
-    container.innerHTML = html;
-}
-
-// Format time ago
 function formatTimeAgo(dateString) {
     if (!dateString) return 'Unknown';
     const date = new Date(dateString.replace('Z', ''));
@@ -238,11 +125,8 @@ function formatTimeAgo(dateString) {
 
 // Run massive scan
 function runMassiveScan() {
-    const registry = currentMassiveScanRegistry || (document.getElementById('massiveScanRegistry') ? document.getElementById('massiveScanRegistry').value : null);
-    if (!registry) {
-        alert('Please select a registry first');
-        return;
-    }
+    const registry = currentMassiveScanRegistry;
+    if (!registry) { alert('Please select a registry first'); return; }
     
     const dryRun = document.getElementById('massiveScanDryRun').checked;
     const mode = document.getElementById('massiveScanMode').value;
@@ -259,11 +143,9 @@ function runMassiveScan() {
     
     const btn = document.getElementById('runMassiveScan');
     const originalHtml = btn.innerHTML;
-    
     btn.disabled = true;
     btn.dataset.scanning = 'true';
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Scanning...';
-    
     if (!dryRun) {
         document.getElementById('massiveScanProgressBar').style.display = 'block';
     }
@@ -273,22 +155,18 @@ function runMassiveScan() {
         btn.dataset.scanning = 'false';
         btn.innerHTML = originalHtml;
         document.getElementById('massiveScanProgressBar').style.display = 'none';
-        showAlert('Scan timed out after 10 minutes. Please try again or scan fewer images.', 'warning');
+        if (typeof showAlert === 'function') showAlert('Scan timed out after 10 minutes.', 'warning');
     }, 600000);
     
     fetch(`/api/scan-massive/${encodeURIComponent(registry)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     })
     .then(r => r.json())
     .then(result => {
         clearTimeout(timeoutId);
-        if (result.results) {
-            massiveScanResults = massiveScanResults.concat(result.results);
-        }
+        if (result.results) massiveScanResults = massiveScanResults.concat(result.results);
         renderMassiveScanResults();
-        
         if (!dryRun) {
             document.getElementById('massiveScanProgressBarInner').style.width = '100%';
             setTimeout(() => {
@@ -296,17 +174,14 @@ function runMassiveScan() {
                 document.getElementById('massiveScanProgressBarInner').style.width = '0%';
             }, 500);
         }
-        
-        if (result.success) {
-            showAlert('Scan completed: ' + result.scanned + ' scanned, ' + result.skipped + ' skipped, ' + result.errors + ' errors', 'success');
-        } else {
-            showAlert('Scan failed: ' + result.error, 'danger');
-            document.getElementById('massiveScanProgressBar').style.display = 'none';
-        }
+        const msgType = result.success ? 'success' : 'danger';
+        const msg = result.success ? 'Scan completed: ' + result.scanned + ' scanned, ' + result.skipped + ' skipped, ' + result.errors + ' errors' : 'Scan failed: ' + result.error;
+        if (typeof showAlert === 'function') showAlert(msg, msgType);
+        if (!dryRun) document.getElementById('massiveScanProgressBar').style.display = 'none';
     })
     .catch(err => {
         clearTimeout(timeoutId);
-        showAlert('Scan failed: ' + err.message, 'danger');
+        if (typeof showAlert === 'function') showAlert('Scan failed: ' + err.message, 'danger');
         document.getElementById('massiveScanProgressBar').style.display = 'none';
     })
     .finally(() => {
@@ -317,58 +192,97 @@ function runMassiveScan() {
     });
 }
 
-// Reset form
+function renderMassiveScanResults() {
+    const container = document.getElementById('massiveScanResults');
+    if (!container) return;
+    const totalEl = document.getElementById('massiveScanTotal');
+    const scannedEl = document.getElementById('massiveScanScanned');
+    const skippedEl = document.getElementById('massiveScanSkipped');
+    const errorsEl = document.getElementById('massiveScanErrors');
+    if (totalEl) totalEl.textContent = massiveScanResults.length;
+    
+    let scanned = 0, skipped = 0, errors = 0;
+    massiveScanResults.forEach(r => {
+        if (r.status === 'success' || r.status === 'dry-run') scanned++;
+        else if (r.status === 'skipped') skipped++;
+        else if (r.status === 'error') errors++;
+    });
+    if (scannedEl) scannedEl.textContent = scanned;
+    if (skippedEl) skippedEl.textContent = skipped;
+    if (errorsEl) errorsEl.textContent = errors;
+    
+    if (massiveScanResults.length === 0) { container.innerHTML = '<p class="text-muted">Run scan to see results...</p>'; return; }
+    
+    let html = '<div class="table-responsive"><table class="table table-sm table-hover"><thead><tr><th>Image</th><th>Status</th><th>Vulnerabilities</th></tr></thead><tbody>';
+    const recent = massiveScanResults.slice(-50);
+    recent.forEach(r => {
+        let statusHtml = '';
+        let vulnHtml = '-';
+        if (r.status === 'success' && r.result) {
+            statusHtml = '<span class="badge bg-success"><i class="bi bi-check-circle"></i></span>';
+            const total = r.result.total || 0;
+            const cls = total === 0 ? 'bg-success' : total < 5 ? 'bg-warning' : total < 20 ? 'bg-danger' : 'bg-dark';
+            vulnHtml = `<span class="badge ${cls}">${total}</span>`;
+        } else if (r.status === 'dry-run') {
+            statusHtml = '<span class="badge bg-warning">Preview</span>';
+        } else if (r.status === 'skipped') {
+            statusHtml = '<span class="badge bg-secondary">Skipped</span>';
+        } else if (r.status === 'error') {
+            statusHtml = '<span class="badge bg-danger">Error</span>';
+        }
+        html += `<tr><td><small>${r.repo}:${r.tag}</small></td><td>${statusHtml}</td><td>${vulnHtml}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+    if (massiveScanResults.length > 50) {
+        html += '<p class="text-muted text-center">Showing last 50 of ' + massiveScanResults.length + ' results</p>';
+    }
+    container.innerHTML = html;
+}
+
+function resetMassiveScanResults() {
+    const ids = ['massiveScanTotal', 'massiveScanScanned', 'massiveScanSkipped', 'massiveScanErrors'];
+    ids.forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '0'; });
+    const el = document.getElementById('massiveScanResults');
+    if (el) el.innerHTML = '<p class="text-muted">Run scan to see results...</p>';
+    massiveScanResults = [];
+}
+
 function resetMassiveScanForm() {
-    const modeSelect = document.getElementById('massiveScanMode');
+    const mode = document.getElementById('massiveScanMode');
     const ageGroup = document.getElementById('massiveScanAgeGroup');
     const ageValue = document.getElementById('massiveScanAgeValue');
     const includeAllTags = document.getElementById('massiveScanIncludeAllTags');
     const dryRun = document.getElementById('massiveScanDryRun');
-    const repoPattern = document.getElementById('massiveScanRepoPattern');
-    
-    if (modeSelect) modeSelect.value = 'all';
+    if (mode) mode.value = 'all';
     if (ageGroup) ageGroup.style.display = 'none';
     if (ageValue) ageValue.value = '30';
     if (includeAllTags) includeAllTags.checked = true;
     if (dryRun) dryRun.checked = true;
-    if (repoPattern) repoPattern.innerHTML = '<option value="*">* (All repositories)</option>';
-    
     updateMassiveScanSummary();
     resetMassiveScanResults();
 }
 
-// Initialize massive scan module
 function initMassiveScan() {
     currentMassiveScanRegistry = null;
-    
-    const modeSelect = document.getElementById('massiveScanMode');
+    const mode = document.getElementById('massiveScanMode');
     const ageValue = document.getElementById('massiveScanAgeValue');
     const ageUnit = document.getElementById('massiveScanAgeUnit');
     const includeAllTags = document.getElementById('massiveScanIncludeAllTags');
     const dryRun = document.getElementById('massiveScanDryRun');
-    const repoPattern = document.getElementById('massiveScanRepoPattern');
     const runBtn = document.getElementById('runMassiveScan');
     const registrySelector = document.getElementById('registrySelector');
     
-    if (modeSelect) {
-        modeSelect.addEventListener('change', updateMassiveScanModeUI);
-    }
+    if (mode) mode.addEventListener('change', updateMassiveScanModeUI);
     if (ageValue) ageValue.addEventListener('input', updateMassiveScanSummary);
     if (ageUnit) ageUnit.addEventListener('change', updateMassiveScanSummary);
     if (includeAllTags) includeAllTags.addEventListener('change', updateMassiveScanSummary);
     if (dryRun) dryRun.addEventListener('change', updateMassiveScanSummary);
-    if (repoPattern) repoPattern.addEventListener('change', updateMassiveScanSummary);
     
     if (runBtn) {
         runBtn.addEventListener('click', function() {
-            const dryRun = document.getElementById('massiveScanDryRun').checked;
-            if (dryRun) {
-                runMassiveScan();
-            } else {
-                if (confirm('This will perform actual vulnerability scans on selected images. This may take a long time and consume significant resources. Continue?')) {
-                    runMassiveScan();
-                }
-            }
+            if (!document.getElementById('massiveScanDryRun').checked) {
+                if (confirm('This will perform actual vulnerability scans. Continue?')) runMassiveScan();
+            } else runMassiveScan();
         });
     }
     
@@ -377,11 +291,10 @@ function initMassiveScan() {
             currentMassiveScanRegistry = this.value;
             populateMassiveScanRepoDropdown(this.value);
         });
-    }
-    
-    if (registrySelector && registrySelector.value) {
-        currentMassiveScanRegistry = registrySelector.value;
-        populateMassiveScanRepoDropdown(registrySelector.value);
+        if (registrySelector.value) {
+            currentMassiveScanRegistry = registrySelector.value;
+            populateMassiveScanRepoDropdown(registrySelector.value);
+        }
     }
     
     updateMassiveScanModeUI();

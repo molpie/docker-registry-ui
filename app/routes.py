@@ -448,6 +448,11 @@ def api_scan_massive(registry_name):
     repo_pattern = data.get("repoPattern", "*")
     scan_mode = data.get("mode", "all")
     age_value = data.get("ageValue")
+    if age_value is not None:
+        try:
+            age_value = int(age_value)
+        except (ValueError, TypeError):
+            age_value = None
     age_unit = data.get("ageUnit", "days")
     include_all_tags = data.get("includeAllTags", True)
     scan_latest_only = 0 if include_all_tags else 1
