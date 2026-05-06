@@ -112,4 +112,4 @@ Note: The Docker development environment includes the `trivy` binary for vulnera
 
 ---
 
-**Developed by [Vibhuvi OiO](https://vibhuvioio.com)** | [GitHub](https://github.com/vibhuvi/docker-registry-ui) | [Docs](https://vibhuvioio.com/docker-registry-ui/) | MIT License
+**Developed by [Vibhuvi OiO & Others](https://vibhuvioio.com)** | [GitHub](https://github.com/vibhuvi/docker-registry-ui) | [Docs](https://vibhuvioio.com/docker-registry-ui/) | MIT License
