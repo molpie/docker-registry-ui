@@ -436,6 +436,145 @@ def api_vulnerabilities(registry_name):
     from .data_store import get_scan_results
     results = get_scan_results(registry_name)
     return jsonify({"results": results})
+    
+@api_bp.route("/scan-massive/<registry_name>", methods=["POST"])
+def api_scan_massive(registry_name):
+    """Mass scan images in registry with various filters"""
+    registry = get_registry_by_name(registry_name)
+    if not registry:
+        return jsonify({"success": False, "error": "Registry not found"}), 404
+    
+    data = request.json
+    repo_pattern = data.get("repoPattern", "*")
+    scan_mode = data.get("mode", "all")
+    age_value = data.get("ageValue")
+    age_unit = data.get("ageUnit", "days")
+    include_all_tags = data.get("includeAllTags", True)
+    scan_latest_only = 0 if include_all_tags else 1
+    dry_run = data.get("dryRun", True)
+    
+    try:
+        from .scanners.factory import get_scanner
+        from .scanners.base import VulnerabilityScanner
+        from .data_store import store_scan_results, get_scan_results
+        from datetime import datetime, timedelta
+        import re
+        
+        # Determine scanner
+        vuln_scan = registry.get("vulnerabilityScan", {})
+        scanner_type = vuln_scan.get("scanner", "trivy")
+        scanner_url = vuln_scan.get("scannerUrl", "")
+        
+        # For built-in Trivy, use a dummy URL - actual scan uses CLI
+        if scanner_type == "trivy" and not scanner_url:
+            scanner_url = "http://localhost:3000"
+        
+        try:
+            scanner = get_scanner(scanner_type, scanner_url)
+        except ValueError:
+            from .scanners.trivy import TrivyScanner
+            scanner = TrivyScanner("builtin", 300)
+        
+        auth = get_auth(registry)
+        repos, error = fetch_repositories(registry["api"], auth)
+        
+        if error:
+            return jsonify({"success": False, "error": error}), 500
+        
+        # Filter repos by pattern
+        if repo_pattern and repo_pattern != "*":
+            import re
+            pattern = repo_pattern.replace("*", ".*")
+            repos = [r for r in repos if re.match(pattern, r)]
+        
+        logger.info(f"Starting massive scan for {registry_name}: {len(repos)} repos, {scan_mode} mode")
+        
+        # Calculate age cutoff if needed
+        age_cutoff = None
+        if scan_mode == "older" and age_value:
+            multiplier = {"days": 1, "weeks": 7, "months": 30}.get(age_unit, 1)
+            age_cutoff = datetime.now() - timedelta(days=age_value * multiplier)
+        
+        # Get existing scan results to check what's been scanned
+        existing_results = {}
+        if scan_mode in ["unscanned", "never-scanned"]:
+            all_results = get_scan_results(registry_name)
+            for key, result in all_results.items():
+                existing_results[key] = result
+        
+        results = []
+        scanned_count = 0
+        skipped_count = 0
+        error_count = 0
+        
+        for repo in repos:
+            tags = fetch_repository_tags(registry["api"], repo, auth)
+            
+            if not include_all_tags:
+                tags = tags[:1]
+            
+            for tag in tags:
+                details = fetch_tag_details(registry["api"], repo, tag, auth)
+                
+                # Check age filter
+                if scan_mode == "older" and age_cutoff and details.get("created"):
+                    try:
+                        created = datetime.fromisoformat(details["created"].replace("Z", "+00:00"))
+                        if created > age_cutoff:
+                            skipped_count += 1
+                            continue
+                    except:
+                        pass
+                
+                # Check if already scanned
+                key = f"{repo}:{tag}"
+                already_scanned = key in existing_results
+                
+                if scan_mode == "unscanned" and already_scanned:
+                    skipped_count += 1
+                    continue
+                if scan_mode == "never-scanned" and already_scanned:
+                    # Check if scan was successful (has valid results, not an error)
+                    existing = existing_results[key]
+                    if existing and not existing.get("error") and existing.get("total", 0) >= 0:
+                        skipped_count += 1
+                        continue
+                
+                result_entry = {"repo": repo, "tag": tag, "status": "pending"}
+                
+                if not dry_run:
+                    try:
+                        logger.info(f"Scanning {repo}:{tag}")
+                        result = scanner.scan_image(registry["api"], repo, tag)
+                        logger.debug(f"Scan result for {repo}:{tag}: {result}")
+                        store_scan_results(registry_name, repo, tag, result)
+                        result_entry["status"] = "success"
+                        result_entry["result"] = result
+                        scanned_count += 1
+                    except Exception as e:
+                        logger.error(f"Scan error for {repo}:{tag}: {str(e)}")
+                        result_entry["status"] = "error"
+                        result_entry["error"] = str(e)
+                        error_count += 1
+                else:
+                    result_entry["status"] = "dry-run"
+                    scanned_count += 1
+                
+                results.append(result_entry)
+        
+        logger.info(f"Massive scan completed: {scanned_count} scanned, {skipped_count} skipped, {error_count} errors")
+        
+        return jsonify({
+            "success": True,
+            "scanned": scanned_count,
+            "skipped": skipped_count,
+            "errors": error_count,
+            "results": results,
+            "dryRun": dry_run
+        })
+    except Exception as e:
+        logger.error(f"Massive scan error: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @api_bp.route("/analytics/<registry_name>")
 def api_analytics(registry_name):

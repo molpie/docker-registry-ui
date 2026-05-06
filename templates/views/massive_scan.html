@@ -1,0 +1,118 @@
+<div id="massive-scan-view" style="display: none;">
+  <h4><i class="bi bi-radar"></i> Massive Image Scan</h4>
+  <hr class="mb-3">
+  
+  <div class="alert alert-info" role="alert">
+    <strong><i class="bi bi-info-circle"></i> Info:</strong> Perform vulnerability scans across multiple images in your registry. You can scan all images, only unscanned images, or filter by age.
+  </div>
+  
+  <div class="row mt-3">
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">
+          <strong>Scan Scope</strong>
+        </div>
+        <div class="card-body">
+          
+          <div class="mb-3">
+            <label class="form-label">Repository Pattern</label>
+            <select class="form-select" id="massiveScanRepoPattern">
+              <option value="*">* (All repositories)</option>
+            </select>
+            <div class="form-text">Filter repositories by name or pattern. Supports wildcards like <code>myapp/*</code></div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Scan Mode</label>
+            <select class="form-select" id="massiveScanMode">
+              <option value="all">All Images</option>
+              <option value="unscanned">Only Unscanned Images</option>
+              <option value="older">Images Older Than...</option>
+              <option value="never-scanned">Never Scanned</option>
+            </select>
+            <div class="form-text">Choose which images to scan</div>
+          </div>
+          
+          <div class="mb-3" id="massiveScanAgeGroup" style="display: none;">
+            <label class="form-label">Age Threshold</label>
+            <div class="input-group">
+              <input type="number" class="form-control" id="massiveScanAgeValue" placeholder="30" min="1" value="30">
+              <select class="form-select" id="massiveScanAgeUnit">
+                <option value="days">Days</option>
+                <option value="weeks">Weeks</option>
+                <option value="months">Months</option>
+              </select>
+            </div>
+            <div class="form-text">Only scan images older than this age</div>
+          </div>
+          
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="massiveScanIncludeAllTags" checked>
+            <label class="form-check-label" for="massiveScanIncludeAllTags">
+              Include all tags (unlimited)
+            </label>
+            <div class="form-text">If disabled, only the latest tag per repository will be scanned. If enabled, all tags will be scanned (may take a long time).</div>
+          </div>
+          
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="massiveScanDryRun" checked>
+            <label class="form-check-label" for="massiveScanDryRun">
+              Dry run (preview only)
+            </label>
+            <div class="form-text">Show what would be scanned without actually performing scans. Uncheck to perform actual scans.</div>
+          </div>
+          
+          <button class="btn btn-primary w-100" id="runMassiveScan">
+            <i class="bi bi-play-circle"></i> Start Scan
+          </button>
+          
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <strong><i class="bi bi-list-check"></i> Scan Summary</strong>
+          <span class="float-end" id="massiveScanStatus">Ready</span>
+        </div>
+        <div class="card-body">
+          
+          <div id="massiveScanSummary">
+            <p class="text-muted">Select options to configure scan...</p>
+          </div>
+          
+          <hr>
+          
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <strong>Results</strong>
+            <div>
+              <span class="badge bg-secondary me-1">Total: <span id="massiveScanTotal">0</span></span>
+              <span class="badge bg-success me-1">Scanned: <span id="massiveScanScanned">0</span></span>
+              <span class="badge bg-warning me-1">Skipped: <span id="massiveScanSkipped">0</span></span>
+              <span class="badge bg-danger me-1">Errors: <span id="massiveScanErrors">0</span></span>
+            </div>
+          </div>
+          
+          <div id="massiveScanResults" style="max-height: 400px; overflow-y: auto;">
+            <p class="text-muted">Run scan to see results...</p>
+          </div>
+          
+          <div class="progress mt-3" style="height: 8px; display: none;" id="massiveScanProgressBar">
+            <div class="progress-bar" id="massiveScanProgressBarInner" style="width: 0%"></div>
+          </div>
+          
+        </div>
+      </div>
+      
+      <div class="card mt-3" id="massiveScanDetailsCard" style="display: none;">
+        <div class="card-header">
+          <strong>Scan Details</strong>
+        </div>
+        <div class="card-body">
+          <div id="massiveScanDetailsContent"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
