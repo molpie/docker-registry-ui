@@ -319,10 +319,6 @@ window.addEventListener('DOMContentLoaded', function() {
                 name: document.getElementById('inline-name').value,
                 api: document.getElementById('inline-api').value,
                 url: document.getElementById('inline-url').value || '',
-                isAuthEnabled: document.getElementById('inline-auth').checked,
-                user: document.getElementById('inline-user').value || '',
-                password: document.getElementById('inline-password').value || '',
-                apiToken: '',
                 default: document.getElementById('inline-default').checked,
                 bulkOperationsEnabled: false,
                 vulnerabilityScan: {
@@ -331,6 +327,19 @@ window.addEventListener('DOMContentLoaded', function() {
                     scannerUrl: '',
                     autoScanRules: [],
                     scanLatestOnly: 1
+                }
+            };
+
+            // Add auth if enabled
+            if (document.getElementById('inline-auth').checked) {
+                const username = document.getElementById('inline-user').value || '';
+                const password = document.getElementById('inline-password').value || '';
+                if (username && password) {
+                    registry.auth = {
+                        type: "basic",
+                        username: username,
+                        password: password
+                    };
                 }
             };
             

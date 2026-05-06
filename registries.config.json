@@ -3,6 +3,24 @@
     {
       "name": "Local Registry",
       "api": "http://registry:5000"
+    },
+    {
+      "name": "Auth Registry Test",
+      "api": "http://nginx-proxy:5004",
+      "auth": {
+        "type": "basic",
+        "username": "admin",
+        "password": "secret"
+      },
+      "default": false,
+      "bulkOperationsEnabled": false,
+      "vulnerabilityScan": {
+        "enabled": true,
+        "scanner": "trivy",
+        "scannerUrl": "",
+        "autoScanRules": [],
+        "scanLatestOnly": 1
+      }
     }
   ]
 }

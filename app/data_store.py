@@ -55,6 +55,31 @@ def update_registry_config(registry_name, config):
                 reg["vulnerabilityScan"]["scanner"] = config["vulnerabilityScan"].get("scanner", "trivy")
                 reg["vulnerabilityScan"]["scannerUrl"] = config["vulnerabilityScan"].get("scannerUrl", "")
                 reg["vulnerabilityScan"]["autoScan"] = config["vulnerabilityScan"].get("autoScan", False)
+            # Handle auth configuration
+            if "auth" in config:
+                reg["auth"] = config["auth"]
+            elif "isAuthEnabled" in config or "user" in config or "password" in config or "apiToken" in config:
+                # Convert old format to new format
+                if config.get("isAuthEnabled"):
+                    if config.get("apiToken"):
+                        reg["auth"] = {
+                            "type": "bearer",
+                            "token": config.get("apiToken", "")
+                        }
+                    else:
+                        reg["auth"] = {
+                            "type": "basic",
+                            "username": config.get("user", ""),
+                            "password": config.get("password", "")
+                        }
+                else:
+                    # Auth disabled - remove auth if present
+                    reg.pop("auth", None)
+                # Remove old fields
+                reg.pop("isAuthEnabled", None)
+                reg.pop("user", None)
+                reg.pop("password", None)
+                reg.pop("apiToken", None)
             Config.save_registries()
             return True
     return False

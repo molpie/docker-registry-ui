@@ -320,6 +320,18 @@ def api_create_registry():
     if not registry.get("name") or not registry.get("api"):
         return jsonify({"success": False, "error": "Name and API URL required"}), 400
     
+    # Convert auth format: isAuthEnabled/user/password -> auth object
+    if registry.get("isAuthEnabled"):
+        registry["auth"] = {
+            "type": "basic",
+            "username": registry.get("user", ""),
+            "password": registry.get("password", "")
+        }
+    # Remove old auth fields to avoid confusion
+    registry.pop("isAuthEnabled", None)
+    registry.pop("user", None)
+    registry.pop("password", None)
+    
     # If this is the first registry or marked as default, unset other defaults
     if registry.get("default") or len(Config.REGISTRIES) == 0:
         for reg in Config.REGISTRIES:
@@ -332,7 +344,6 @@ def api_create_registry():
         return jsonify({"success": True, "message": "Registry created and saved to file"})
     else:
         return jsonify({"success": True, "message": "Registry created (in-memory only - using env config)"})
-
 @api_bp.route("/test-scanner", methods=["POST"])
 def api_test_scanner():
     """Test scanner connection"""

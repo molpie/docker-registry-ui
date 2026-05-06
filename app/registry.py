@@ -5,11 +5,9 @@ from .config import Config
 def get_auth(registry):
     """Get authentication for registry"""
     auth_config = registry.get("auth", {})
-    auth_type = auth_config.get("type", "none")
+    auth_type = auth_config.get("type")
     
-    if auth_type == "none":
-        return None
-    elif auth_type == "basic":
+    if auth_type == "basic":
         username = auth_config.get("username")
         password = auth_config.get("password")
         if username and password:
