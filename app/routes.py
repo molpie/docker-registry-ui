@@ -24,6 +24,25 @@ main_bp = Blueprint("main", __name__)
 api_bp = Blueprint("api", __name__)
 
 
+def get_scanner_auth_config(registry):
+    """Build scanner auth config from new and legacy registry auth formats."""
+    auth = registry.get("auth")
+    if isinstance(auth, dict):
+        return auth
+
+    if registry.get("isAuthEnabled"):
+        if registry.get("apiToken"):
+            return {"type": "bearer", "token": registry.get("apiToken")}
+        if registry.get("user") and registry.get("password"):
+            return {
+                "type": "basic",
+                "username": registry.get("user"),
+                "password": registry.get("password"),
+            }
+
+    return None
+
+
 @main_bp.route("/")
 def index():
     from flask import current_app
@@ -321,7 +340,9 @@ def api_scan_image(registry_name, repo, tag):
 
         registry_url = registry["api"]
         logger.info(f"Scanning {registry_url}/{repo}:{tag}")
-        result = scanner.scan_image(registry_url, repo, tag)
+        result = scanner.scan_image(
+            registry_url, repo, tag, get_scanner_auth_config(registry)
+        )
         logger.debug(f"Scan result: {result}")
 
         if result.get("error"):
@@ -499,7 +520,9 @@ def api_scan_all(registry_name):
             tags = fetch_repository_tags(registry["api"], repo, auth)
             for tag in tags[:scan_latest_only]:
                 logger.info(f"Scanning {repo}:{tag}")
-                result = scanner.scan_image(registry_url, repo, tag)
+                result = scanner.scan_image(
+                    registry_url, repo, tag, get_scanner_auth_config(registry)
+                )
                 logger.debug(f"Scan result for {repo}:{tag}: {result}")
 
                 if result.get("error"):
@@ -648,7 +671,12 @@ def api_scan_massive(registry_name):
                 if not dry_run:
                     try:
                         logger.info(f"Scanning {repo}:{tag}")
-                        result = scanner.scan_image(registry["api"], repo, tag)
+                        result = scanner.scan_image(
+                            registry["api"],
+                            repo,
+                            tag,
+                            get_scanner_auth_config(registry),
+                        )
                         logger.debug(f"Scan result for {repo}:{tag}: {result}")
 
                         if result.get("error"):

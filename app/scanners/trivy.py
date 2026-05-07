@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 class TrivyScanner(VulnerabilityScanner):
     """Trivy vulnerability scanner integration"""
 
-    def scan_image(self, registry_url, repository, tag):
+    def scan_image(self, registry_url, repository, tag, auth_config=None):
         """Scan image using Trivy CLI"""
         try:
             import subprocess
@@ -18,6 +18,19 @@ class TrivyScanner(VulnerabilityScanner):
             image_ref = f"{registry_host}/{repository}:{tag}"
 
             logger.debug(f"[TRIVY] Scanning image: {image_ref}")
+
+            auth_args = []
+            if isinstance(auth_config, dict):
+                auth_type = auth_config.get("type")
+                if auth_type == "basic":
+                    username = auth_config.get("username")
+                    password = auth_config.get("password")
+                    if username and password:
+                        auth_args = ["--username", username, "--password", password]
+                elif auth_type == "bearer":
+                    token = auth_config.get("token")
+                    if token:
+                        auth_args = ["--registry-token", token]
 
             attempts = [
                 {"name": "default", "extra_args": []},
@@ -37,10 +50,15 @@ class TrivyScanner(VulnerabilityScanner):
                         "image",
                         "--format",
                         "json",
+                        "--scanners",
+                        "vuln",
+                        "--image-src",
+                        "remote",
                         "--insecure",
                         "--timeout",
                         "5m",
                     ]
+                    + auth_args
                     + attempt["extra_args"]
                     + [image_ref]
                 )
