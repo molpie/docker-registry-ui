@@ -277,9 +277,13 @@ def api_scan_image(registry_name, repo, tag):
         logger.info(f"Scanning {registry_url}/{repo}:{tag}")
         result = scanner.scan_image(registry_url, repo, tag)
         logger.debug(f"Scan result: {result}")
-        
+
+        if result.get("error"):
+            logger.error(f"Scan failed for {repo}:{tag}: {result.get('error')}")
+            return jsonify(result), 502
+
         store_scan_results(registry_name, repo, tag, result)
-        
+
         return jsonify(result)
     except Exception as e:
         logger.error(f"Scan error: {str(e)}")
@@ -432,6 +436,11 @@ def api_scan_all(registry_name):
                 logger.info(f"Scanning {repo}:{tag}")
                 result = scanner.scan_image(registry_url, repo, tag)
                 logger.debug(f"Scan result for {repo}:{tag}: {result}")
+
+                if result.get("error"):
+                    logger.error(f"Scan failed for {repo}:{tag}: {result.get('error')}")
+                    continue
+
                 store_scan_results(registry_name, repo, tag, result)
                 scanned += 1
         
@@ -563,10 +572,17 @@ def api_scan_massive(registry_name):
                         logger.info(f"Scanning {repo}:{tag}")
                         result = scanner.scan_image(registry["api"], repo, tag)
                         logger.debug(f"Scan result for {repo}:{tag}: {result}")
-                        store_scan_results(registry_name, repo, tag, result)
-                        result_entry["status"] = "success"
-                        result_entry["result"] = result
-                        scanned_count += 1
+
+                        if result.get("error"):
+                            logger.error(f"Scan failed for {repo}:{tag}: {result.get('error')}")
+                            result_entry["status"] = "error"
+                            result_entry["error"] = result.get("error")
+                            error_count += 1
+                        else:
+                            store_scan_results(registry_name, repo, tag, result)
+                            result_entry["status"] = "success"
+                            result_entry["result"] = result
+                            scanned_count += 1
                     except Exception as e:
                         logger.error(f"Scan error for {repo}:{tag}: {str(e)}")
                         result_entry["status"] = "error"

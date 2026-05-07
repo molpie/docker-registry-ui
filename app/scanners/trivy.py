@@ -17,27 +17,50 @@ class TrivyScanner(VulnerabilityScanner):
             image_ref = f"{registry_host}/{repository}:{tag}"
             
             logger.debug(f"[TRIVY] Scanning image: {image_ref}")
-            
-            # Run trivy client to scan the image
-            cmd = [
-                "trivy", "image",
-                "--format", "json",
-                "--insecure",
-                "--timeout", "5m",
-                image_ref
+
+            attempts = [
+                {
+                    "name": "default",
+                    "extra_args": []
+                },
+                {
+                    "name": "ghcr-fallback",
+                    "extra_args": ["--db-repository", "ghcr.io/aquasecurity/trivy-db"]
+                }
             ]
-            
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-            
-            logger.debug(f"[TRIVY] Exit code: {result.returncode}")
-            
-            if result.returncode == 0 and result.stdout:
-                report = json.loads(result.stdout)
-                return self._parse_trivy_report(report)
-            else:
-                error_msg = result.stderr if result.stderr else "No output"
-                logger.error(f"[TRIVY] Error: {error_msg[:200]}")
-                return {"error": f"Scan failed: {error_msg[:200]}"}
+
+            last_error = "No output"
+            last_exit_code = None
+
+            for attempt in attempts:
+                cmd = [
+                    "trivy", "image",
+                    "--format", "json",
+                    "--insecure",
+                    "--timeout", "5m",
+                ] + attempt["extra_args"] + [image_ref]
+
+                logger.debug(f"[TRIVY] Running attempt '{attempt['name']}'")
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+                last_exit_code = result.returncode
+
+                logger.debug(f"[TRIVY] Exit code ({attempt['name']}): {result.returncode}")
+
+                if result.returncode == 0 and result.stdout:
+                    report = json.loads(result.stdout)
+                    return self._parse_trivy_report(report)
+
+                stderr_text = (result.stderr or "").strip()
+                stdout_text = (result.stdout or "").strip()
+                combined_error = stderr_text or stdout_text or "No output"
+                last_error = combined_error
+                logger.error(f"[TRIVY] Attempt '{attempt['name']}' failed: {combined_error[:1000]}")
+
+            return {
+                "error": f"Scan failed: {last_error[:500]}",
+                "scanner": "trivy",
+                "exitCode": last_exit_code
+            }
         except subprocess.TimeoutExpired:
             return {"error": "Scan timeout after 5 minutes"}
         except Exception as e:
