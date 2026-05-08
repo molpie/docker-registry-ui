@@ -1,7 +1,7 @@
-<div id="analytics-view" style="display: none;">
+<div id="analytics-view" style="display: none">
   <h4><i class="bi bi-graph-up"></i> Usage Analytics</h4>
-  <hr class="mb-3">
-  
+  <hr class="mb-3" />
+
   <div class="row mt-3">
     <div class="col-md-3">
       <div class="card text-center">
@@ -36,7 +36,7 @@
       </div>
     </div>
   </div>
-  
+
   <div class="row mt-3">
     <div class="col-md-6">
       <div class="card">
@@ -59,7 +59,102 @@
       </div>
     </div>
   </div>
-  
+
+  <div class="row mt-3">
+    <div class="col-12">
+      <h5 class="mb-2">
+        <i class="bi bi-shield-exclamation"></i> Security Overview (Trivy)
+      </h5>
+    </div>
+  </div>
+
+  <div class="row mt-2">
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h6 class="text-muted">Scan Coverage</h6>
+          <h2 id="stat-scan-coverage">0%</h2>
+          <small class="text-muted" id="stat-scan-coverage-details"
+            >0/0 images</small
+          >
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h6 class="text-muted">Total Vulnerabilities</h6>
+          <h2 id="stat-total-vulns">0</h2>
+          <small class="text-muted" id="stat-vuln-images"
+            >0 vulnerable images</small
+          >
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h6 class="text-muted">Images with Critical</h6>
+          <h2 id="stat-images-critical">0</h2>
+          <small class="text-muted">Critical findings present</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center">
+        <div class="card-body">
+          <h6 class="text-muted">Stale Scans &gt; 30 Days</h6>
+          <h2 id="stat-stale-scans">0</h2>
+          <small class="text-muted">Consider re-scanning</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mt-3">
+    <div class="col-md-5">
+      <div class="card">
+        <div class="card-header">
+          <strong>Severity Distribution</strong>
+        </div>
+        <div class="card-body">
+          <canvas id="severityDistributionChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-7">
+      <div class="card">
+        <div
+          class="card-header d-flex justify-content-between align-items-center"
+        >
+          <strong>Top 10 Risk Repositories</strong>
+          <small class="text-muted">Sorted by Critical, High, then Total</small>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm" id="riskRepoTable">
+              <thead>
+                <tr>
+                  <th>Repository</th>
+                  <th>Scanned Tags</th>
+                  <th>Vulnerable Tags</th>
+                  <th>Critical</th>
+                  <th>High</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody id="riskRepoTableBody">
+                <tr>
+                  <td colspan="6" class="text-center text-muted">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="row mt-3">
     <div class="col-md-12">
       <div class="card">

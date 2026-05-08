@@ -737,10 +737,14 @@ def api_analytics(registry_name):
     analytics = []
     total_tags = 0
     total_size = 0
+    image_keys = []
 
     for repo in repos:
         tags = fetch_repository_tags(registry["api"], repo, auth)
         repo_size = 0
+
+        for tag in tags:
+            image_keys.append(f"{repo}:{tag}")
 
         for tag in tags:
             details = fetch_tag_details(registry["api"], repo, tag, auth)
@@ -758,6 +762,87 @@ def api_analytics(registry_name):
             }
         )
 
+    from .data_store import get_scan_results
+    from datetime import datetime, timedelta
+
+    scan_results = get_scan_results(registry_name)
+    coverage_total = len(image_keys)
+    scanned_images = 0
+    vulnerable_images = 0
+    images_with_critical = 0
+    images_with_high = 0
+    stale_scans = 0
+    stale_cutoff = datetime.now() - timedelta(days=30)
+
+    severity_totals = {
+        "CRITICAL": 0,
+        "HIGH": 0,
+        "MEDIUM": 0,
+        "LOW": 0,
+        "UNKNOWN": 0,
+    }
+
+    repo_risk = {}
+    for repo in repos:
+        repo_risk[repo] = {
+            "repo": repo,
+            "scannedTags": 0,
+            "vulnerableTags": 0,
+            "CRITICAL": 0,
+            "HIGH": 0,
+            "MEDIUM": 0,
+            "LOW": 0,
+            "UNKNOWN": 0,
+            "total": 0,
+        }
+
+    for key in image_keys:
+        result = scan_results.get(key)
+        if not result or result.get("error"):
+            continue
+
+        scanned_images += 1
+        repo, _, tag = key.partition(":")
+        summary = result.get("summary", {})
+        total = result.get("total", 0)
+
+        if repo in repo_risk:
+            repo_risk[repo]["scannedTags"] += 1
+            repo_risk[repo]["total"] += total
+
+        if total > 0:
+            vulnerable_images += 1
+            if repo in repo_risk:
+                repo_risk[repo]["vulnerableTags"] += 1
+
+        if summary.get("CRITICAL", 0) > 0:
+            images_with_critical += 1
+        if summary.get("HIGH", 0) > 0:
+            images_with_high += 1
+
+        for sev in ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"]:
+            value = summary.get(sev, 0)
+            severity_totals[sev] += value
+            if repo in repo_risk:
+                repo_risk[repo][sev] += value
+
+        scanned_at = result.get("scannedAt")
+        if scanned_at:
+            try:
+                scanned_dt = datetime.fromisoformat(scanned_at.replace("Z", "+00:00"))
+                if scanned_dt.tzinfo is not None:
+                    scanned_dt = scanned_dt.replace(tzinfo=None)
+                if scanned_dt < stale_cutoff:
+                    stale_scans += 1
+            except Exception:
+                pass
+
+    top_risk_repos = sorted(
+        repo_risk.values(),
+        key=lambda r: (r["CRITICAL"], r["HIGH"], r["total"]),
+        reverse=True,
+    )[:10]
+
     return jsonify(
         {
             "analytics": analytics,
@@ -765,5 +850,26 @@ def api_analytics(registry_name):
             "totalTags": total_tags,
             "totalSize": total_size,
             "avgSize": total_size // total_tags if total_tags > 0 else 0,
+            "vulnerabilityAnalytics": {
+                "coverage": {
+                    "totalImages": coverage_total,
+                    "scannedImages": scanned_images,
+                    "unscannedImages": max(coverage_total - scanned_images, 0),
+                    "coveragePct": (
+                        round((scanned_images / coverage_total) * 100, 1)
+                        if coverage_total > 0
+                        else 0
+                    ),
+                },
+                "kpi": {
+                    "totalVulnerabilities": sum(severity_totals.values()),
+                    "vulnerableImages": vulnerable_images,
+                    "imagesWithCritical": images_with_critical,
+                    "imagesWithHigh": images_with_high,
+                    "staleScansOver30Days": stale_scans,
+                },
+                "severityTotals": severity_totals,
+                "topRiskRepos": top_risk_repos,
+            },
         }
     )
