@@ -2,10 +2,10 @@
 
 Modern web interface for managing Docker Registry with vulnerability scanning, bulk operations, and multi-registry support.
 
-[![Docker Pulls](https://img.shields.io/docker/pulls/vibhuvi/docker-registry-ui)](https://github.com/VibhuviOiO/docker-registry-ui/pkgs/container/docker-registry-ui)
+[![Docker Pulls](https://img.shields.io/docker/pulls/vibhuvi/docker-registry-ui)](https://github.com/molpie/docker-registry-ui/pkgs/container/docker-registry-ui)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-[![Open in Gitpod](https://img.shields.io/badge/Gitpod-Ready%20to%20Code-purple?logo=gitpod)](https://gitpod.io/#https://github.com/VibhuviOiO/docker-registry-ui)
+[![Open in Gitpod](https://img.shields.io/badge/Gitpod-Ready%20to%20Code-purple?logo=gitpod)](https://gitpod.io/#https://github.com/molpie/docker-registry-ui)
 
 [![Docker Registry UI](https://vibhuvioio.com/docker-registry-ui/img/repositories.png)](https://vibhuvioio.com/docker-registry-ui/)
 
@@ -15,7 +15,7 @@ Modern web interface for managing Docker Registry with vulnerability scanning, b
 
 Click the button below to try Docker Registry UI instantly in your browser using [Play with Docker](https://labs.play-with-docker.com/):
 
-[![Try in PWD](https://raw.githubusercontent.com/play-with-docker/stacks/master/assets/images/button.png)](https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/VibhuviOiO/docker-registry-ui/main/docker/single-registry/docker-compose.yml)
+[![Try in PWD](https://raw.githubusercontent.com/play-with-docker/stacks/master/assets/images/button.png)](https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/molpie/docker-registry-ui/main/docker/single-registry/docker-compose.yml)
 
 **Note:** This launches a single-registry setup. The UI will be available on port **5000** and the registry on port **5001**.
 
@@ -23,8 +23,8 @@ Click the button below to try Docker Registry UI instantly in your browser using
 
 ```bash
 # Download test environment
-wget https://raw.githubusercontent.com/VibhuviOiO/docker-registry-ui/main/docker/multi-registry/docker-compose.yml
-wget https://raw.githubusercontent.com/VibhuviOiO/docker-registry-ui/main/docker/multi-registry/populate-test-images.sh
+wget https://raw.githubusercontent.com/molpie/docker-registry-ui/main/docker/multi-registry/docker-compose.yml
+wget https://raw.githubusercontent.com/molpie/docker-registry-ui/main/docker/multi-registry/populate-test-images.sh
 chmod +x populate-test-images.sh
 
 # Start registries and UI
@@ -52,7 +52,7 @@ docker-compose -f docker-compose.yml up -d
 docker run -d \
   -p 5000:5000 \
   -v $(pwd)/data:/app/data \
-  ghcr.io/vibhuvioio/docker-registry-ui:latest
+  ghcr.io/molpie/docker-registry-ui:latest
 
 # With test registry (using Docker network)
 docker network create registry-net
@@ -61,7 +61,7 @@ docker run -d --name test-registry --network registry-net -p 5001:5000 \
 docker run -d --name registry-ui --network registry-net -p 5000:5000 \
   -e 'REGISTRIES=[{"name":"Local Registry","api":"http://test-registry:5000"}]' \
   -v $(pwd)/data:/app/data \
-  ghcr.io/vibhuvioio/docker-registry-ui:latest
+  ghcr.io/molpie/docker-registry-ui:latest
 ```
 
 Access at `http://localhost:5000` - Setup wizard will guide you.
@@ -69,6 +69,7 @@ Access at `http://localhost:5000` - Setup wizard will guide you.
 ## 🧭 Run Locally (Developer)
 
 ### Docker Development
+
 ```bash
 # Clone repository
 git clone https://github.com/vibhuvi/docker-registry-ui.git
@@ -81,6 +82,7 @@ docker-compose -f docker-compose.dev.yml up -d
 ```
 
 ### Python Development
+
 If you want to run the Python application locally (outside Docker):
 
 ```bash
@@ -108,7 +110,7 @@ Note: The Docker development environment includes the `trivy` binary for vulnera
 
 ## 📦 Versions
 
-[View all versions](https://github.com/VibhuviOiO/docker-registry-ui/pkgs/container/docker-registry-ui) | Use specific version: `ghcr.io/vibhuvioio/docker-registry-ui:v1.0.0`
+[View all versions](https://github.com/molpie/docker-registry-ui/pkgs/container/docker-registry-ui) | Use specific version: `ghcr.io/molpie/docker-registry-ui:v1.0.0`
 
 ---
 

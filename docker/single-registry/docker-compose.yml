@@ -10,7 +10,7 @@ services:
       - registry-data:/var/lib/registry
 
   registry-ui:
-    image: ghcr.io/vibhuvioio/docker-registry-ui:latest
+    image: ghcr.io/molpie/docker-registry-ui:latest
     ports:
       - "5000:5000"
     environment:

@@ -3,7 +3,7 @@ tasks:
     init: |
       echo "Pulling Docker images..."
       docker pull registry:2
-      docker pull ghcr.io/vibhuvioio/docker-registry-ui:latest
+      docker pull ghcr.io/molpie/docker-registry-ui:latest
     command: |
       echo "Starting Docker Registry UI..."
       cd docker/single-registry

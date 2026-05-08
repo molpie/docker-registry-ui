@@ -30,7 +30,7 @@ server {
     location / {
         auth_basic "Protected Registry";
         auth_basic_user_file /etc/nginx/htpasswd;
-        
+
         proxy_pass http://registry:5000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -82,7 +82,7 @@ $ curl -u admin:secret http://localhost:5004/v2/_catalog
 $ docker run -d --name registry-ui --network registry-net -p 5008:5000 \
   -e 'REGISTRIES=[{"name":"Secure Registry","api":"http://nginx-proxy:5004","auth":{"type":"basic","username":"admin","password":"secret"},"default":true}]' \
   -v $(pwd)/data:/app/data \
-  ghcr.io/vibhuvioio/docker-registry-ui:latest
+  ghcr.io/molpie/docker-registry-ui:latest
 c82d5b19cb470d7f45557166786497443aeaf5759305e0e1d5bf6a2ec6ebd345
 
 ## Step 5: Verify Setup

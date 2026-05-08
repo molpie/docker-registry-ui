@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # Generate htpasswd file
@@ -48,7 +48,7 @@ services:
 
   # Registry UI
   registry-ui:
-    image: ghcr.io/vibhuvioio/docker-registry-ui:latest
+    image: ghcr.io/molpie/docker-registry-ui:latest
     ports:
       - "5003:5000"
     volumes:

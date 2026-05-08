@@ -67,7 +67,7 @@
 
         <main class="docs-content">
             <h1>Example: Multi-Registry with Basic Authentication</h1>
-            
+
             <h2>Overview</h2>
             <p>Set up multiple Docker registries with HTTP Basic Authentication using docker run commands.</p>
 
@@ -165,7 +165,7 @@ EOF
 docker run -d --name registry-ui --network registry-net -p 5003:5000 \
   -v $(pwd)/registries.config.json:/app/registries.config.json:ro \
   -v $(pwd)/data:/app/data \
-  ghcr.io/vibhuvioio/docker-registry-ui:latest</code></pre>
+  ghcr.io/molpie/docker-registry-ui:latest</code></pre>
 
             <h2>Access</h2>
             <ul>
@@ -269,7 +269,7 @@ The push refers to repository [localhost:5004/secure/alpine]
 test: digest: sha256:fd032399cd767f310a1d1274e81cab9f0fd8a49b3589eba2c3420228cd45b6a7 size: 1023
 
  Info -> Not all multiplatform-content is present and only the available single-platform image was pushed
-         
+
 sha256:de0eb0b3f2a47ba1eb89389859a9bd88b28e82f5826b6969ad604979713c2d4f -> sha256:fd032399cd767f310a1d1274e81cab9f0fd8a49b3589eba2c3420228cd45b6a7
 
 $ curl http://localhost:5001/v2/_catalog
@@ -282,7 +282,7 @@ $ curl -u admin:secret http://localhost:5004/v2/_catalog
 $ docker run -d --name registry-ui --network registry-net -p 5003:5000 \
   -v $(pwd)/registries.config.json:/app/registries.config.json:ro \
   -v $(pwd)/data:/app/data \
-  ghcr.io/vibhuvioio/docker-registry-ui:latest
+  ghcr.io/molpie/docker-registry-ui:latest
 c82d5b19cb470d7f45557166786497443aeaf5759305e0e1d5bf6a2ec6ebd345
 
 $ docker logs registry-ui | grep "Configured"
@@ -357,7 +357,7 @@ The push refers to repository [localhost:5004/secure/alpine]
 test: digest: sha256:fd032399cd767f310a1d1274e81cab9f0fd8a49b3589eba2c3420228cd45b6a7 size: 1023
 
  Info -> Not all multiplatform-content is present and only the available single-platform image was pushed
-         
+
 sha256:de0eb0b3f2a47ba1eb89389859a9bd88b28e82f5826b6969ad604979713c2d4f -> sha256:fd032399cd767f310a1d1274e81cab9f0fd8a49b3589eba2c3420228cd45b6a7
 
 $ curl -u admin:secret http://localhost:5004/v2/_catalog
@@ -370,7 +370,7 @@ $ curl -u admin:secret http://localhost:5004/v2/secure/alpine/tags/list
 $ docker run -d --name registry-ui --network registry-net -p 5003:5000 \
   -v $(pwd)/registries.config.json:/app/registries.config.json:ro \
   -v $(pwd)/data:/app/data \
-  ghcr.io/vibhuvioio/docker-registry-ui:latest
+  ghcr.io/molpie/docker-registry-ui:latest
 c82d5b19cb470d7f45557166786497443aeaf5759305e0e1d5bf6a2ec6ebd345
 
 $ docker logs registry-ui | grep "Configured"
@@ -404,7 +404,7 @@ Basic auth registry setup works perfectly with docker run commands:
 
             <h2>Test with Authentication</h2>
             <p>Modify <a href="example-multi-registry.html">docker-compose-multi-registry.yml</a> to add basic auth to registries and test authentication flow.</p>
-            
+
             <h2>Next Steps</h2>
             <ul>
                 <li><a href="example-multi-registry.html">Multi-Registry Setup without Authentication</a></li>

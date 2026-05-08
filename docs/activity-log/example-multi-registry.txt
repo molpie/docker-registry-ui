@@ -69,7 +69,7 @@ $ docker run -d -p 5008:5000 \
   -v $(pwd)/data:/app/data \
   --add-host=host.docker.internal:host-gateway \
   --name registry-ui \
-  ghcr.io/vibhuvioio/docker-registry-ui:latest
+  ghcr.io/molpie/docker-registry-ui:latest
 191036f99f2edb99eee0164dc90044e704c21f2d3101fde8317fb6ae338d204c
 
 ## Step 4: Verify Setup
