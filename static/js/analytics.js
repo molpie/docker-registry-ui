@@ -141,7 +141,7 @@ function loadAnalytics(registryName) {
         },
         options: {
           responsive: true,
-          maintainAspectRatio: true,
+          maintainAspectRatio: false,
           plugins: {
             legend: {
               position: "bottom",
@@ -151,7 +151,8 @@ function loadAnalytics(registryName) {
       });
 
       let riskHtml = "";
-      topRiskRepos.forEach((repo) => {
+      const topTen = topRiskRepos.slice(0, 10);
+      topTen.forEach((repo) => {
         riskHtml += `<tr>
                     <td>${repo.repo}</td>
                     <td>${repo.scannedTags || 0}</td>
@@ -161,6 +162,18 @@ function loadAnalytics(registryName) {
                     <td>${repo.total || 0}</td>
                 </tr>`;
       });
+
+      for (let i = topTen.length; i < 10; i++) {
+        riskHtml += `<tr class="analytics-risk-filler-row">
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                </tr>`;
+      }
+
       document.getElementById("riskRepoTableBody").innerHTML =
         riskHtml ||
         '<tr><td colspan="6" class="text-center text-muted">No scan data available yet</td></tr>';

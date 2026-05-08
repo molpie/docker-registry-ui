@@ -111,19 +111,21 @@
     </div>
   </div>
 
-  <div class="row mt-3">
+  <div class="row mt-3 align-items-stretch">
     <div class="col-md-5">
-      <div class="card">
+      <div class="card analytics-security-card">
         <div class="card-header">
           <strong>Severity Distribution</strong>
         </div>
         <div class="card-body">
-          <canvas id="severityDistributionChart"></canvas>
+          <div class="analytics-severity-chart-wrap">
+            <canvas id="severityDistributionChart"></canvas>
+          </div>
         </div>
       </div>
     </div>
     <div class="col-md-7">
-      <div class="card">
+      <div class="card analytics-security-card">
         <div
           class="card-header d-flex justify-content-between align-items-center"
         >
@@ -131,7 +133,7 @@
           <small class="text-muted">Sorted by Critical, High, then Total</small>
         </div>
         <div class="card-body">
-          <div class="table-responsive">
+          <div class="table-responsive analytics-risk-table-wrap">
             <table class="table table-sm" id="riskRepoTable">
               <thead>
                 <tr>
