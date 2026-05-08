@@ -277,8 +277,8 @@ small,
 }
 
 .analytics-security-card {
-  height: 590px;
-  min-height: 590px;
+  height: 625px;
+  min-height: 625px;
   display: flex;
   flex-direction: column;
 }
@@ -314,7 +314,7 @@ small,
 
 @media (max-width: 768px) {
   .analytics-security-card {
-    height: 490px;
-    min-height: 490px;
+    height: 520px;
+    min-height: 520px;
   }
 }
