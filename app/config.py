@@ -13,7 +13,7 @@ class Config:
     READ_ONLY = os.getenv("READ_ONLY", "true").lower() == "true"
     CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", "300"))
     TIMEOUT = int(os.getenv("TIMEOUT", "10"))
-    BUILT_BY = os.getenv("BUILT_BY", "Vibhuvi OiO , molpie")
+    BUILT_BY = os.getenv("BUILT_BY", "Vibhuvi OiO, molpie")
 
     # Persistent storage
     DB_PATH = os.getenv("DB_PATH", "/app/data/scan_results.db")

@@ -7,8 +7,6 @@ Modern web interface for managing Docker Registry with vulnerability scanning, b
 
 [![Open in Gitpod](https://img.shields.io/badge/Gitpod-Ready%20to%20Code-purple?logo=gitpod)](https://gitpod.io/#https://github.com/molpie/docker-registry-ui)
 
-[![Docker Registry UI](https://vibhuvioio.com/docker-registry-ui/img/repositories.png)](https://vibhuvioio.com/docker-registry-ui/)
-
 ## 🚀 Try It Now (2 Minutes)
 
 ### ☁️ Play with Docker (Browser)
@@ -158,4 +156,4 @@ Note: The Docker development environment includes the `trivy` binary for vulnera
 
 ---
 
-**Developed by [Vibhuvi OiO , molpie](https://vibhuvioio.com)** | [GitHub](https://github.com/vibhuvi/docker-registry-ui) | [Docs](https://vibhuvioio.com/docker-registry-ui/) | MIT License
+**Developed by [Vibhuvi OiO](https://vibhuvioio.com)**, molpie | [GitHub](https://github.com/vibhuvi/docker-registry-ui) | [Docs](https://vibhuvioio.com/docker-registry-ui/) | MIT License
