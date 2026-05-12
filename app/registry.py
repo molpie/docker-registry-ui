@@ -13,6 +13,8 @@ def _build_request_auth(auth):
 def get_auth(registry):
     """Get authentication for registry"""
     auth_config = registry.get("auth", {})
+    if not isinstance(auth_config, dict):
+        auth_config = {}
     auth_type = auth_config.get("type")
 
     if auth_type == "basic":
