@@ -18,12 +18,13 @@ RUN ARCH="$(apk --print-arch)"; \
         s390x)    TRIVY_ARCH="s390x" ;; \
         *) echo "Unsupported architecture: $ARCH" && exit 1 ;; \
     esac && \
-    TRIVY_VERSION=$(curl -s https://api.github.com/repos/aquasecurity/trivy/releases/latest \
-        | grep tag_name | cut -d '"' -f 4) && \
+    TRIVY_VERSION="$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/aquasecurity/trivy/releases/latest | sed 's#.*/tag/##')" && \
+    [ -n "$TRIVY_VERSION" ] || (echo "Failed to resolve Trivy version" && exit 1) && \
     echo "Downloading Trivy $TRIVY_VERSION for $TRIVY_ARCH" && \
-    curl -L -s \
-        "https://github.com/aquasecurity/trivy/releases/download/${TRIVY_VERSION}/trivy_${TRIVY_VERSION#v}_Linux-${TRIVY_ARCH}.tar.gz" \
-        | tar -xz -C /usr/local/bin trivy && \
+    curl -fsSL -o /tmp/trivy.tar.gz \
+        "https://github.com/aquasecurity/trivy/releases/download/${TRIVY_VERSION}/trivy_${TRIVY_VERSION#v}_Linux-${TRIVY_ARCH}.tar.gz" && \
+    tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy && \
+    rm -f /tmp/trivy.tar.gz && \
     chmod +x /usr/local/bin/trivy
 
 # Install Python dependencies into a separate directory
