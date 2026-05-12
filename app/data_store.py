@@ -1,8 +1,115 @@
 from .config import Config
+import json
+import os
+import glob
+import sqlite3
+from datetime import datetime as dt, timedelta
 
 # Simple in-memory cache for repositories (no background updates)
 registry_cache = {}
 scan_results = {}
+
+
+def _ensure_db():
+    db_path = Config.DB_PATH
+    db_dir = os.path.dirname(db_path)
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS scan_results (
+                registry_name TEXT NOT NULL,
+                repo TEXT NOT NULL,
+                tag TEXT NOT NULL,
+                scanned_at TEXT,
+                cache_expires_at TEXT,
+                payload_json TEXT NOT NULL,
+                PRIMARY KEY (registry_name, repo, tag)
+            )
+            """
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _upsert_scan_result_sqlite(registry_name, repo, tag, normalized):
+    _ensure_db()
+    conn = sqlite3.connect(Config.DB_PATH)
+    try:
+        conn.execute(
+            """
+            INSERT INTO scan_results (
+                registry_name, repo, tag, scanned_at, cache_expires_at, payload_json
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(registry_name, repo, tag) DO UPDATE SET
+                scanned_at=excluded.scanned_at,
+                cache_expires_at=excluded.cache_expires_at,
+                payload_json=excluded.payload_json
+            """,
+            (
+                registry_name,
+                repo,
+                tag,
+                normalized.get("scannedAt"),
+                normalized.get("cacheExpiresAt"),
+                json.dumps(normalized),
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _load_scan_results_sqlite(registry_name):
+    _ensure_db()
+    conn = sqlite3.connect(Config.DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            """
+            SELECT repo, tag, payload_json, cache_expires_at
+            FROM scan_results
+            WHERE registry_name = ?
+            """,
+            (registry_name,),
+        ).fetchall()
+    finally:
+        conn.close()
+
+    loaded = {}
+    for row in rows:
+        try:
+            result = json.loads(row["payload_json"])
+            key = f"{row['repo']}:{row['tag']}"
+            loaded[key] = result
+        except Exception:
+            continue
+    return loaded
+
+
+def _load_scan_results_files(registry_name):
+    loaded = {}
+    data_dir = os.path.dirname(Config.CONFIG_FILE) if Config.CONFIG_FILE else "/app/data"
+    scan_files = glob.glob(os.path.join(data_dir, "*_*.json"))
+
+    for scan_file in scan_files:
+        filename = os.path.basename(scan_file)
+        if filename.startswith("scan_results_") or filename == "registries.config.json":
+            continue
+        try:
+            with open(scan_file, "r", encoding="utf-8") as f:
+                result = json.load(f)
+            repo = result.get("repo")
+            tag = result.get("tag")
+            if repo and tag:
+                key = f"{repo}:{tag}"
+                loaded[key] = result
+        except Exception:
+            continue
+    return loaded
 
 
 def get_registries():
@@ -107,11 +214,8 @@ def update_registry_config(registry_name, config):
 def store_scan_results(registry_name, repo, tag, result, ttl_hours=24):
     """Store vulnerability scan results"""
     from datetime import datetime
-    import json
-    import os
 
     # --- Unified scan result schema ---
-    from hashlib import sha256
     import copy
 
     schema_version = 1
@@ -141,12 +245,16 @@ def store_scan_results(registry_name, repo, tag, result, ttl_hours=24):
     normalized["cacheTTL"] = ttl_hours
     normalized["cacheExpiresAt"] = None
     if ttl_hours > 0:
-        from datetime import timedelta
-        from datetime import datetime as dt
-
         expires = dt.fromisoformat(now) + timedelta(hours=ttl_hours)
         normalized["cacheExpiresAt"] = expires.isoformat()
     scan_results[registry_name][cache_key] = normalized
+
+    # Persist to SQLite (primary persistence)
+    try:
+        _upsert_scan_result_sqlite(registry_name, repo, tag, normalized)
+    except Exception as e:
+        print(f"Failed to upsert scan result into SQLite: {e}")
+
     # Persist to per-image file only (legacy, for now)
     data_dir = (
         os.path.dirname(Config.CONFIG_FILE) if Config.CONFIG_FILE else "/app/data"
@@ -162,53 +270,30 @@ def store_scan_results(registry_name, repo, tag, result, ttl_hours=24):
 
 
 def get_scan_results(registry_name, force_refresh=False, ttl_hours=24):
-    """Get all scan results for a registry from individual image files"""
-    import json
-    import os
-    import glob
+    """Get all scan results for a registry from SQLite, with file fallback."""
 
     if registry_name not in scan_results:
         scan_results[registry_name] = {}
 
-    data_dir = (
-        os.path.dirname(Config.CONFIG_FILE) if Config.CONFIG_FILE else "/app/data"
-    )
+    # Load from SQLite first
+    try:
+        sqlite_results = _load_scan_results_sqlite(registry_name)
+        scan_results[registry_name].update(sqlite_results)
+    except Exception as e:
+        print(f"Failed to load from SQLite for {registry_name}: {e}")
 
-    # Load all individual scan files (legacy and new)
-    scan_files = glob.glob(os.path.join(data_dir, "*_*.json"))
-    for scan_file in scan_files:
-        filename = os.path.basename(scan_file)
-        # Skip registry config files
-        if filename.startswith("scan_results_") or filename == "registries.config.json":
-            continue
-        try:
-            with open(scan_file, "r") as f:
-                result = json.load(f)
-                # Normalize if missing schemaVersion (legacy)
-                if "schemaVersion" not in result:
-                    repo = result.get("repo")
-                    tag = result.get("tag")
-                    if repo and tag:
-                        key = f"{repo}:{tag}"
-                        scan_results[registry_name][key] = result
-                else:
-                    repo = result.get("repo")
-                    tag = result.get("tag")
-                    if repo and tag:
-                        key = f"{repo}:{tag}"
-                        scan_results[registry_name][key] = result
-        except Exception as e:
-            print(f"Failed to load {scan_file}: {e}")
+    # Fallback to file-based results for backward compatibility
+    file_results = _load_scan_results_files(registry_name)
+    for key, value in file_results.items():
+        if key not in scan_results[registry_name]:
+            scan_results[registry_name][key] = value
 
     print(f"Loaded {len(scan_results[registry_name])} scan results for {registry_name}")
     # Invalidate cache if expired or digest changed (soft/hard)
-    from datetime import datetime as dt
-
     results = scan_results.get(registry_name, {})
     valid_results = {}
     for key, res in results.items():
         expires = res.get("cacheExpiresAt")
-        digest = res.get("digest")
         if force_refresh:
             continue
         if expires:

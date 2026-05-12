@@ -111,7 +111,15 @@
                 <li><strong>Fixed Version</strong>: Version that fixes the vulnerability</li>
                 <li><strong>Description</strong>: Detailed vulnerability description</li>
                 <li><strong>Layer</strong>: Which image layer introduced the vulnerability</li>
+                <li><strong>Origin</strong>: BASE vs APP classification for each vulnerability</li>
             </ul>
+
+            <h2>JSON Export</h2>
+            <p>
+                From tag detail, you can download the full vulnerability report as JSON.
+                The download button is shown only when vulnerabilities are present,
+                in sync with CVE detail availability.
+            </p>
 
             <h2>Layer-by-Layer Analysis</h2>
             <p>View which layer introduced each vulnerability:</p>
@@ -123,10 +131,10 @@
             </ol>
 
             <h2>Scan Results Storage</h2>
-            <p>Scan results are persisted to disk:</p>
+            <p>Scan results are persisted:</p>
             <ul>
-                <li>Stored in the same directory that contains the configured <code>CONFIG_FILE</code> (for example, if <code>CONFIG_FILE=/app/data/registries.config.json</code> then results are written under <code>/app/data</code>).</li>
-                <li>One JSON file per image tag. Filenames use the pattern <code>&lt;repo_with_slashes_replaced_by_underscores&gt;_&lt;tag&gt;.json</code> (e.g. <code>myrepo_subrepo_latest.json</code>).</li>
+                <li>Primary storage in SQLite (path configured by <code>DB_PATH</code>).</li>
+                <li>Legacy per-image JSON files are still supported for backward compatibility.</li>
                 <li>Results remain available after UI restart</li>
                 <li>Re-scanning overwrites previous results</li>
             </ul>

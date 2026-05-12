@@ -111,7 +111,8 @@ docker run -d --name test-registry --network registry-net -p 5001:5000 \
 
 # Run Registry UI (using container name)
 docker run -d --name registry-ui --network registry-net -p 5000:5000 \
-  -e 'REGISTRIES=[{"name":"Local Registry","api":"http://test-registry:5000"}]' \
+  --env-file .env \
+  -v $(pwd)/registries.config.json:/app/registries.config.json:ro \
   -v $(pwd)/data:/app/data \
   ghcr.io/molpie/docker-registry-ui:latest</code></pre>
 
@@ -142,7 +143,8 @@ $ docker run -d --name test-registry --network registry-net -p 5001:5000 \
 c991c042ebb30d9d2643005ab7f4e4a033ba64aa6fdb94175bfa42fb00ff54f1
 
 $ docker run -d --name registry-ui --network registry-net -p 5005:5000 \
-  -e 'REGISTRIES=[{"name":"Local Registry","api":"http://test-registry:5000"}]' \
+  --env-file .env \
+  -v $(pwd)/registries.config.json:/app/registries.config.json:ro \
   -v $(pwd)/data:/app/data \
   ghcr.io/molpie/docker-registry-ui:latest
 ef26a979e49cf3a118601771d9068cba7537caac108614d4f4c682bfe1a9557f
@@ -166,6 +168,16 @@ latest: digest: sha256:667473807103639a0aca5b49534a216d2b64f0fb868aaa801f023da0c
 
 # Access UI at http://localhost:5005 to see the nginx images</code></pre>
         </details>
+
+Before starting, create a minimal <code>registries.config.json</code>:
+<pre><code>{
+  "registries": [
+    {
+      "name": "Local Registry",
+      "api": "http://test-registry:5000"
+    }
+  ]
+}</code></pre>
 
         <h2>Docker Compose</h2>
 
@@ -211,7 +223,7 @@ $ docker-compose -f docker-compose.dev.yml up -d
  ✔ Container docker-registry-ui-registry-ui-1  Started
 
 $ curl http://localhost:5005/api/registries
-{"registries":[{"api":"http://registry:5000","isAuthEnabled":false,"name":"Local Registry"}]}
+{"registries":[{"name":"Local Registry","api":"http://registry:5000", ...}]}
 
 # Access development UI at http://localhost:5005</code></pre>
         </details>

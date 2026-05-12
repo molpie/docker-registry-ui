@@ -102,17 +102,29 @@
         <h1>Configuration Guide</h1>
 
         <h2>Configuration Methods</h2>
-        <p>You can configure registries in two ways:</p>
+        <p>Configuration is split into two distinct layers:</p>
         <ul>
           <li>
             <strong>Setup Wizard</strong>: On first run, the UI shows a setup
             wizard to configure your registry through the web interface
           </li>
           <li>
-            <strong>Config File</strong>: Pre-create a
+            <strong>Registry Config File</strong>: Pre-create a
             <code>registries.config.json</code> file for automated deployments
           </li>
+          <li>
+            <strong>Runtime Settings via .env</strong>: Non-registry settings
+            (scheduler, notifications, storage path, read-only mode, etc.) are
+            configured via environment variables, typically from
+            <code>.env</code>
+          </li>
         </ul>
+
+        <p>
+          <strong>Important:</strong> Do not put registry definitions in
+          <code>.env</code>. Registry definitions belong only to
+          <code>registries.config.json</code>.
+        </p>
 
         <h2>Environment Variables</h2>
         <table>
@@ -127,8 +139,7 @@
             <tr>
               <td><code>CONFIG_FILE</code></td>
               <td>
-                Path to registries configuration file (optional - setup wizard
-                used if not provided). By default the app checks
+                Path to registries configuration file. By default the app checks
                 <code>/app/registries.config.json</code>. When running inside
                 the official container it is common to set this to
                 <code>/app/data/registries.config.json</code> (for example by
@@ -139,15 +150,20 @@
             <tr>
               <td><code>READ_ONLY</code></td>
               <td>Enable read-only mode (disable delete operations)</td>
-              <td><code>false</code></td>
+              <td><code>true</code></td>
             </tr>
             <tr>
-              <td><code>PORT</code></td>
-              <td>Port for the web interface</td>
-              <td><code>5000</code></td>
+              <td><code>DB_PATH</code></td>
+              <td>SQLite file used to persist scan results</td>
+              <td><code>/app/data/scan_results.db</code></td>
             </tr>
           </tbody>
         </table>
+
+        <p>
+          For the complete and updated list, use the repository
+          <code>.env.example</code> as source of truth.
+        </p>
 
         <h2>Setup Wizard (First Run)</h2>
         <p>
@@ -219,6 +235,11 @@ cat > ./data/registries.config.json <<'JSON'
   ]
 }
 JSON</code></pre>
+
+        <p>
+          Keep this file focused on registries only. Do not place runtime app
+          settings in <code>registries.config.json</code>.
+        </p>
 
         <p>
           When launching the container, mount the <code>data</code> directory
@@ -295,9 +316,10 @@ services:
     image: ghcr.io/molpie/docker-registry-ui:latest
     ports:
       - "5000:5000"
+    env_file:
+      - .env
     environment:
       - CONFIG_FILE=/app/data/registries.config.json
-      - READ_ONLY=false
     volumes:
       - ./data:/app/data
     depends_on:

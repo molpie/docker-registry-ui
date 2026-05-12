@@ -1,0 +1,35 @@
+<div id="system-status-view" style="display: none;">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h4 class="mb-0">System Status</h4>
+    <button class="btn btn-sm btn-outline-secondary" id="refresh-system-status-btn">
+      <i class="bi bi-arrow-clockwise"></i> Refresh
+    </button>
+  </div>
+  <hr class="mb-3">
+
+  <div id="system-status-loading" class="text-muted mb-3">
+    <span class="spinner-border spinner-border-sm"></span> Loading status...
+  </div>
+
+  <div id="system-status-content" style="display: none;">
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-header"><strong>Scheduler</strong></div>
+          <div class="card-body" id="scheduler-status-card"></div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-header"><strong>Notifications</strong></div>
+          <div class="card-body" id="notifications-status-card"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><strong>Storage</strong></div>
+      <div class="card-body" id="storage-status-card"></div>
+    </div>
+  </div>
+</div>

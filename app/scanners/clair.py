@@ -33,6 +33,11 @@ class ClairScanner(VulnerabilityScanner):
             "summary": vulnerabilities,
             "total": sum(vulnerabilities.values()),
             "details": [],
+            "layers": [],
+            "baseImageExposure": {
+                "total": 0,
+                "summary": vulnerabilities,
+            },
         }
 
     def get_report(self, scan_id):

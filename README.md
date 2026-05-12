@@ -40,10 +40,51 @@ docker-compose -f docker-compose.yml up -d
 
 - 📦 Repository & tag management
 - 🛡️ Vulnerability scanning (Trivy)
+- 📥 Download JSON report from image/tag detail
+- 🧱 Layer-level vulnerability view with BASE/APP origin highlighting
 - 🗑️ Bulk operations with safety features
+- 📡 Massive scan API with advanced filters (all/older/unscanned/never-scanned)
+- 🕒 Daily scheduled massive scan
+- ✉️ Massive scan recap notifications (Email + Telegram)
+- 🩺 System Status view (scheduler/notifications/storage)
+- 💾 SQLite persistence for vulnerability scan results
 - 🔗 Multi-registry support
 - 📊 Storage analytics
 - 🎨 Modern, responsive UI
+
+## ⚙️ Configuration Model
+
+This project now uses a clear split between registry configuration and runtime settings:
+
+- `registries.config.json`: only registry definitions and per-registry options
+- `.env` (from `.env.example`): application/runtime settings
+
+Important rule:
+
+- No registry definitions in `.env`.
+- The only registry-related environment variable is `CONFIG_FILE` (path to `registries.config.json`).
+
+Example `registries.config.json`:
+
+```json
+{
+  "registries": [
+    {
+      "name": "Local Registry",
+      "api": "http://registry:5000",
+      "default": true
+    }
+  ]
+}
+```
+
+Example setup:
+
+```bash
+cp .env.example .env
+# Edit .env runtime settings
+# Edit registries.config.json for registry definitions
+```
 
 ## 📦 Quick Start (Production)
 
@@ -51,6 +92,8 @@ docker-compose -f docker-compose.yml up -d
 # Simple setup (setup wizard will guide you)
 docker run -d \
   -p 5000:5000 \
+  --env-file .env \
+  -v $(pwd)/registries.config.json:/app/registries.config.json:ro \
   -v $(pwd)/data:/app/data \
   ghcr.io/molpie/docker-registry-ui:latest
 
@@ -59,7 +102,8 @@ docker network create registry-net
 docker run -d --name test-registry --network registry-net -p 5001:5000 \
   -e REGISTRY_STORAGE_DELETE_ENABLED=true registry:2
 docker run -d --name registry-ui --network registry-net -p 5000:5000 \
-  -e 'REGISTRIES=[{"name":"Local Registry","api":"http://test-registry:5000"}]' \
+  --env-file .env \
+  -v $(pwd)/registries.config.json:/app/registries.config.json:ro \
   -v $(pwd)/data:/app/data \
   ghcr.io/molpie/docker-registry-ui:latest
 ```

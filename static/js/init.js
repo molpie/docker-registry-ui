@@ -40,6 +40,7 @@ window.addEventListener('DOMContentLoaded', function() {
             document.getElementById('cleanup-view').style.display = view === 'cleanup' ? 'block' : 'none';
             document.getElementById('bulk-operations-view').style.display = view === 'bulk' ? 'block' : 'none';
             document.getElementById('massive-scan-view').style.display = view === 'massivescan' ? 'block' : 'none';
+            document.getElementById('system-status-view').style.display = view === 'status' ? 'block' : 'none';
             document.getElementById('analytics-view').style.display = view === 'analytics' ? 'block' : 'none';
 
             
@@ -54,6 +55,9 @@ window.addEventListener('DOMContentLoaded', function() {
              }
              if (view === 'massivescan') {
                  populateMassiveScanRepoDropdown(currentRegistry);
+             }
+             if (view === 'status') {
+                 loadSystemStatus();
              }
 
         });
@@ -226,6 +230,7 @@ window.addEventListener('DOMContentLoaded', function() {
     checkRegistryHealth();
     initBulkOperations();
     initMassiveScan();
+    initSystemStatus();
     initSetupWizard();
     checkFirstRun();
     

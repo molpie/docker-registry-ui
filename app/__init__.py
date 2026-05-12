@@ -20,6 +20,9 @@ def create_app():
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(health_bp)
+
+    from .scheduler import start_scheduler_if_enabled
+    start_scheduler_if_enabled()
     
     logger.info(f"Configured {len(Config.REGISTRIES)} registries")
     logger.info(f"Read-only mode: {Config.READ_ONLY}")

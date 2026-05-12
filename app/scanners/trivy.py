@@ -107,10 +107,16 @@ class TrivyScanner(VulnerabilityScanner):
         }
         details = []
         layers = []
+        base_image_exposure = {
+            "total": 0,
+            "summary": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0},
+        }
 
         for result in report.get("Results", []):
             target = result.get("Target", "")
-            layer_vulns = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
+            result_class = result.get("Class", "")
+            is_base_target = result_class == "os-pkgs"
+            layer_vulns = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0}
             layer_details = []
 
             for vuln in result.get("Vulnerabilities", []):
@@ -119,6 +125,14 @@ class TrivyScanner(VulnerabilityScanner):
                 layer_vulns[severity] = layer_vulns.get(severity, 0) + 1
 
                 layer_info = vuln.get("Layer", {})
+                layer_digest = layer_info.get("Digest", "") if layer_info else ""
+                is_base_vuln = is_base_target or not layer_digest
+                if is_base_vuln:
+                    base_image_exposure["total"] += 1
+                    base_image_exposure["summary"][severity] = (
+                        base_image_exposure["summary"].get(severity, 0) + 1
+                    )
+
                 vuln_detail = {
                     "id": vuln.get("VulnerabilityID"),
                     "severity": severity,
@@ -126,7 +140,9 @@ class TrivyScanner(VulnerabilityScanner):
                     "version": vuln.get("InstalledVersion"),
                     "fixedVersion": vuln.get("FixedVersion"),
                     "title": vuln.get("Title"),
-                    "layer": layer_info.get("Digest", "")[:12] if layer_info else "",
+                    "layer": layer_digest[:12] if layer_digest else "",
+                    "origin": "BASE" if is_base_vuln else "APP",
+                    "isBaseImage": is_base_vuln,
                 }
                 details.append(vuln_detail)
                 layer_details.append(vuln_detail)
@@ -136,6 +152,8 @@ class TrivyScanner(VulnerabilityScanner):
                     {
                         "target": target,
                         "digest": target.split(":")[-1][:12] if ":" in target else "",
+                        "isBase": is_base_target,
+                        "class": result_class,
                         "summary": layer_vulns,
                         "total": sum(layer_vulns.values()),
                         "vulnerabilities": layer_details,
@@ -148,6 +166,7 @@ class TrivyScanner(VulnerabilityScanner):
             "total": sum(vulnerabilities.values()),
             "details": details,
             "layers": layers,
+            "baseImageExposure": base_image_exposure,
         }
 
     def get_report(self, scan_id):

@@ -437,6 +437,7 @@ function viewCVEDetails(repo, tag) {
       }
 
       const details = result.details || [];
+        const baseExposure = result.baseImageExposure || { total: 0, summary: {} };
       let html = `
                 <div class="modal fade" id="cveModal" tabindex="-1">
                     <div class="modal-dialog modal-xl">
@@ -465,12 +466,20 @@ function viewCVEDetails(repo, tag) {
                                         <label class="btn btn-outline-secondary btn-sm" for="filter-unknown">UNKNOWN</label>
                                     </div>
                                 </div>
+                                    <div class="alert alert-light border mb-3" role="alert">
+                                      <strong>Base image exposure:</strong> ${baseExposure.total || 0} vulnerabilities
+                                      (C: ${baseExposure.summary?.CRITICAL || 0},
+                                      H: ${baseExposure.summary?.HIGH || 0},
+                                      M: ${baseExposure.summary?.MEDIUM || 0},
+                                      L: ${baseExposure.summary?.LOW || 0})
+                                    </div>
                                 <div class="table-responsive">
                                     <table class="table table-sm table-hover" id="cve-table">
                                         <thead>
                                             <tr>
                                                 <th>CVE ID</th>
                                                 <th>Severity</th>
+                                            <th>Origin</th>
                                                 <th>Package</th>
                                                 <th>Installed</th>
                                                 <th>Fixed</th>
@@ -491,9 +500,12 @@ function viewCVEDetails(repo, tag) {
         const cveId = vuln.id || "N/A";
         const cveLink =
           cveId !== "N/A" ? `https://nvd.nist.gov/vuln/detail/${cveId}` : "#";
+        const origin = vuln.origin || (vuln.isBaseImage ? "BASE" : "APP");
+        const originBadge = origin === "BASE" ? "danger" : "secondary";
         html += `<tr data-severity="${vuln.severity}">
                     <td><a href="${cveLink}" target="_blank" rel="noopener"><code>${cveId}</code></a></td>
                     <td><span class="badge bg-${severityClass}">${vuln.severity}</span></td>
+                    <td><span class="badge bg-${originBadge}">${origin}</span></td>
                     <td>${vuln.package || "N/A"}</td>
                     <td><code>${vuln.version || "N/A"}</code></td>
                     <td><code>${vuln.fixedVersion || "N/A"}</code></td>
@@ -506,9 +518,12 @@ function viewCVEDetails(repo, tag) {
       if (result.layers && result.layers.length > 0) {
         html += `<h6 class="mt-4">Vulnerabilities by Layer</h6>`;
         result.layers.forEach((layer, idx) => {
+          const baseBadge = layer.isBase
+            ? '<span class="badge bg-danger ms-2">BASE</span>'
+            : '<span class="badge bg-secondary ms-2">APP</span>';
           html += `<div class="card mb-2">
                         <div class="card-header" style="font-size:0.875rem;">
-                            <strong>Layer ${idx + 1}</strong> <code>${layer.digest}</code>
+                            <strong>Layer ${idx + 1}</strong> <code>${layer.digest}</code> ${baseBadge}
                             <span class="float-end">
                                 <span class="badge bg-danger">${layer.summary.CRITICAL || 0}</span>
                                 <span class="badge bg-warning">${layer.summary.HIGH || 0}</span>

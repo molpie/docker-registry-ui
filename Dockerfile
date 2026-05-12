@@ -48,6 +48,7 @@ COPY --from=builder /install /usr/local
 COPY app/ ./app/
 COPY templates/ ./templates/
 COPY static/ ./static/
+COPY docs/ ./docs/
 COPY asgi.py .
 
 EXPOSE 5000
