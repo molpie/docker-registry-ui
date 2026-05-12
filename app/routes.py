@@ -1,3 +1,4 @@
+from flask import send_file, make_response
 from flask import Blueprint, render_template, jsonify, request
 from .config import Config
 from .data_store import (
@@ -22,6 +23,29 @@ logger = logging.getLogger(__name__)
 
 main_bp = Blueprint("main", __name__)
 api_bp = Blueprint("api", __name__)
+
+# Endpoint: Download JSON vulnerabilità per immagine/tag
+@api_bp.route("/vulnerabilities/<registry_name>/<path:repo>/<tag>/download", methods=["GET"])
+def api_download_vuln_json(registry_name, repo, tag):
+    """Download vulnerability scan result as JSON file (normalizzato + raw)"""
+    from .data_store import get_scan_results
+    import io, json, datetime
+
+    results = get_scan_results(registry_name)
+    key = f"{repo}:{tag}"
+    result = results.get(key)
+    if not result:
+        return jsonify({"error": "No scan result found for this image/tag"}), 404
+    # Compose filename
+    ts = result.get("scannedAt") or datetime.datetime.now().isoformat()
+    safe_repo = repo.replace('/', '_')
+    filename = f"{safe_repo}_{tag}_vulns_{ts.replace(':','-').split('.')[0]}.json"
+    # Prepare response
+    json_bytes = json.dumps(result, indent=2).encode("utf-8")
+    buf = io.BytesIO(json_bytes)
+    resp = make_response(send_file(buf, mimetype="application/json", as_attachment=True, download_name=filename))
+    resp.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    return resp
 
 
 def get_scanner_auth_config(registry):

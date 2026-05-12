@@ -129,7 +129,7 @@ function renderTags(tags) {
                             <div class="tag-vuln" data-tag="${tag}" style="min-width: 250px;"></div>
                         </div>
                     </div>
-                    <div class="btn-group btn-group-sm">
+                    <div class="btn-group btn-group-sm tag-btn-group" data-tag="${tag}">
                         <button class="btn btn-outline-secondary" onclick="viewManifest('${currentRegistry}', '${currentRepo}', '${tag}')" title="View manifest">
                             Manifest
                         </button>
@@ -144,6 +144,9 @@ function renderTags(tags) {
                         </button>
                         <button class="btn btn-outline-secondary tag-cve-btn d-none" data-tag="${tag}" onclick="viewCVEDetails('${currentRepo}', '${tag}')" title="View CVEs">
                             CVEs
+                        </button>
+                        <button class="btn btn-outline-success tag-download-json-btn d-none" data-tag="${tag}" title="Download vulnerabilities JSON">
+                            <i class="bi bi-download"></i> JSON
                         </button>
                         ${!readOnly ? `<button class="btn btn-outline-danger" onclick="deleteTag('${currentRegistry}', '${currentRepo}', '${tag}')">
                             <i class="bi bi-trash"></i>
@@ -259,11 +262,32 @@ function loadTagVulnerabilities(tags) {
                 const result = results[key];
                 const vulnEl = document.querySelector(`.tag-vuln[data-tag="${tag}"]`);
                 const btnEl = document.querySelector(`.tag-scan-btn[data-tag="${tag}"]`);
-                
+                const downloadBtn = document.querySelector(`.tag-download-json-btn[data-tag="${tag}"]`);
+                const cveBtn = document.querySelector(`.tag-cve-btn[data-tag="${tag}"]`);
+                let total = 0;
+                if (result) {
+                    total = result.total || 0;
+                }
+                // Mostra entrambi solo se total > 0
+                if (downloadBtn) {
+                    if (total > 0) {
+                        downloadBtn.classList.remove('d-none');
+                        downloadBtn.onclick = function() {
+                            window.open(`/api/vulnerabilities/${encodeURIComponent(currentRegistry)}/${encodeURIComponent(currentRepo)}/${encodeURIComponent(tag)}/download`, '_blank');
+                        };
+                    } else {
+                        downloadBtn.classList.add('d-none');
+                    }
+                }
+                if (cveBtn) {
+                    if (total > 0) {
+                        cveBtn.classList.remove('d-none');
+                    } else {
+                        cveBtn.classList.add('d-none');
+                    }
+                }
                 if (result && vulnEl && btnEl) {
                     const summary = result.summary || {};
-                    const total = result.total || 0;
-                    
                     let badges = '<div><small class="text-muted">Vulnerabilities:</small></div>';
                     badges += '<div class="d-flex gap-2 mt-1">';
                     badges += `<span class="badge bg-danger">${summary.CRITICAL || 0} C</span>`;
@@ -272,15 +296,9 @@ function loadTagVulnerabilities(tags) {
                     badges += `<span class="badge bg-secondary">${summary.LOW || 0} L</span>`;
                     badges += '</div>';
                     vulnEl.innerHTML = badges;
-                    
                     btnEl.textContent = 'Rescan';
                     btnEl.classList.remove('btn-outline-primary');
                     btnEl.classList.add('btn-outline-secondary');
-                    
-                    const cveBtn = document.querySelector(`.tag-cve-btn[data-tag="${tag}"]`);
-                    if (cveBtn && total > 0) {
-                        cveBtn.classList.remove('d-none');
-                    }
                 }
             });
         });
@@ -296,14 +314,12 @@ function scanTagVulnerabilities(registryName, repo, tag, btn) {
         .then(data => {
             btn.disabled = false;
             btn.innerHTML = originalHtml;
-            
             if (data.error) {
                 showAlert(`Scan failed: ${data.error}`, 'danger');
             } else {
                 const total = data.total || 0;
                 const critical = data.summary?.CRITICAL || 0;
                 const high = data.summary?.HIGH || 0;
-                
                 const vulnEl = document.querySelector(`.tag-vuln[data-tag="${tag}"]`);
                 if (vulnEl) {
                     let badges = '<div><small class="text-muted">Vulnerabilities:</small></div>';
@@ -315,7 +331,7 @@ function scanTagVulnerabilities(registryName, repo, tag, btn) {
                     badges += '</div>';
                     vulnEl.innerHTML = badges;
                 }
-                
+                // Aggiorna CVEs e Download JSON
                 const cveBtn = document.querySelector(`.tag-cve-btn[data-tag="${tag}"]`);
                 if (cveBtn) {
                     if (total > 0) {
@@ -324,16 +340,27 @@ function scanTagVulnerabilities(registryName, repo, tag, btn) {
                         cveBtn.classList.add('d-none');
                     }
                 }
-                
+                const downloadBtn = document.querySelector(`.tag-download-json-btn[data-tag="${tag}"]`);
+                if (downloadBtn) {
+                    if (total > 0) {
+                        downloadBtn.classList.remove('d-none');
+                        downloadBtn.onclick = function() {
+                            window.open(`/api/vulnerabilities/${encodeURIComponent(currentRegistry)}/${encodeURIComponent(currentRepo)}/${encodeURIComponent(tag)}/download`, '_blank');
+                        };
+                    } else {
+                        downloadBtn.classList.add('d-none');
+                    }
+                }
                 btn.textContent = 'Rescan';
                 btn.classList.remove('btn-outline-primary');
                 btn.classList.add('btn-outline-secondary');
-                
                 if (total === 0) {
                     showAlert(`✓ No vulnerabilities found in ${repo}:${tag}`, 'success');
                 } else {
                     showAlert(`Found ${total} vulnerabilities (Critical: ${critical}, High: ${high}) in ${repo}:${tag}`, 'warning');
                 }
+                // Forza refresh vulnerabilità per riallineare cache e pulsanti
+                loadTagVulnerabilities([tag]);
             }
         })
         .catch(err => {
