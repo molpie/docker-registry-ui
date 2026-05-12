@@ -1,17 +1,8 @@
-{% extends "base.html" %}
-
-{% block content %}
-{% include 'views/setup_wizard.html' %}
-{% include 'views/repositories.html' %}
-{% include 'views/registry_config.html' %}
-{% include 'views/cleanup.html' %}
-{% include 'views/bulk_operations.html' %}
-{% include 'views/massive_scan.html' %}
-{% include 'views/system_status.html' %}
-{% include 'views/analytics.html' %}
-
-{% endblock %}
-
-{% block extra_js %}
+{% extends "base.html" %} {% block content %} {% include
+'views/setup_wizard.html' %} {% include 'views/repositories.html' %} {% include
+'views/registry_config.html' %} {% include 'views/cleanup.html' %} {% include
+'views/bulk_operations.html' %} {% include 'views/massive_scan.html' %} {%
+include 'views/system_status.html' %} {% include 'views/analytics.html' %} {%
+endblock %} {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 {% endblock %}

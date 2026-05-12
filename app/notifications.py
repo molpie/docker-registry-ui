@@ -34,7 +34,9 @@ def send_email_recap(registry_name, scan_result):
         if not getattr(Config, key)
     ]
     if missing:
-        logger.warning(f"Email recap disabled due to missing config: {', '.join(missing)}")
+        logger.warning(
+            f"Email recap disabled due to missing config: {', '.join(missing)}"
+        )
         return False
 
     body = _build_recap_text(registry_name, scan_result)
@@ -44,12 +46,19 @@ def send_email_recap(registry_name, scan_result):
     msg["To"] = Config.NOTIFY_EMAIL_TO
 
     try:
-        with smtplib.SMTP(Config.NOTIFY_EMAIL_SMTP_HOST, Config.NOTIFY_EMAIL_SMTP_PORT, timeout=20) as server:
+        with smtplib.SMTP(
+            Config.NOTIFY_EMAIL_SMTP_HOST, Config.NOTIFY_EMAIL_SMTP_PORT, timeout=20
+        ) as server:
             if Config.NOTIFY_EMAIL_USE_TLS:
                 server.starttls()
             if Config.NOTIFY_EMAIL_SMTP_USER:
-                server.login(Config.NOTIFY_EMAIL_SMTP_USER, Config.NOTIFY_EMAIL_SMTP_PASSWORD or "")
-            server.sendmail(Config.NOTIFY_EMAIL_FROM, [Config.NOTIFY_EMAIL_TO], msg.as_string())
+                server.login(
+                    Config.NOTIFY_EMAIL_SMTP_USER,
+                    Config.NOTIFY_EMAIL_SMTP_PASSWORD or "",
+                )
+            server.sendmail(
+                Config.NOTIFY_EMAIL_FROM, [Config.NOTIFY_EMAIL_TO], msg.as_string()
+            )
         logger.info(f"Massive scan email recap sent for {registry_name}")
         return True
     except Exception as e:

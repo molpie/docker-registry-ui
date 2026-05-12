@@ -32,9 +32,7 @@ class Config:
     MASSIVE_SCAN_INCLUDE_ALL_TAGS = (
         os.getenv("MASSIVE_SCAN_INCLUDE_ALL_TAGS", "true").lower() == "true"
     )
-    MASSIVE_SCAN_DRY_RUN = (
-        os.getenv("MASSIVE_SCAN_DRY_RUN", "false").lower() == "true"
-    )
+    MASSIVE_SCAN_DRY_RUN = os.getenv("MASSIVE_SCAN_DRY_RUN", "false").lower() == "true"
 
     # Notifications - email
     NOTIFY_EMAIL_ENABLED = os.getenv("NOTIFY_EMAIL_ENABLED", "false").lower() == "true"
@@ -63,7 +61,9 @@ class Config:
                 # Preferred format: {"registries": [...]} ; legacy: [...]
                 if isinstance(data, dict):
                     registries = data.get("registries", [])
-                    Config.REGISTRIES = registries if isinstance(registries, list) else []
+                    Config.REGISTRIES = (
+                        registries if isinstance(registries, list) else []
+                    )
                 elif isinstance(data, list):
                     Config.REGISTRIES = data
                 else:

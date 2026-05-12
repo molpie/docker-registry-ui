@@ -5,7 +5,13 @@ function loadSystemStatus() {
   const notificationsEl = document.getElementById("notifications-status-card");
   const storageEl = document.getElementById("storage-status-card");
 
-  if (!loadingEl || !contentEl || !schedulerEl || !notificationsEl || !storageEl) {
+  if (
+    !loadingEl ||
+    !contentEl ||
+    !schedulerEl ||
+    !notificationsEl ||
+    !storageEl
+  ) {
     return;
   }
 

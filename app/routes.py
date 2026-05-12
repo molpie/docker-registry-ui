@@ -1,5 +1,12 @@
 from flask import send_file, make_response
-from flask import Blueprint, render_template, jsonify, request, send_from_directory, redirect
+from flask import (
+    Blueprint,
+    render_template,
+    jsonify,
+    request,
+    send_from_directory,
+    redirect,
+)
 from .config import Config
 from .data_store import (
     get_registries,

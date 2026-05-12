@@ -92,7 +92,9 @@ def _load_scan_results_sqlite(registry_name):
 
 def _load_scan_results_files(registry_name):
     loaded = {}
-    data_dir = os.path.dirname(Config.CONFIG_FILE) if Config.CONFIG_FILE else "/app/data"
+    data_dir = (
+        os.path.dirname(Config.CONFIG_FILE) if Config.CONFIG_FILE else "/app/data"
+    )
     scan_files = glob.glob(os.path.join(data_dir, "*_*.json"))
 
     for scan_file in scan_files:

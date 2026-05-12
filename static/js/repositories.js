@@ -437,7 +437,10 @@ function viewCVEDetails(repo, tag) {
       }
 
       const details = result.details || [];
-        const baseExposure = result.baseImageExposure || { total: 0, summary: {} };
+      const baseExposure = result.baseImageExposure || {
+        total: 0,
+        summary: {},
+      };
       let html = `
                 <div class="modal fade" id="cveModal" tabindex="-1">
                     <div class="modal-dialog modal-xl">

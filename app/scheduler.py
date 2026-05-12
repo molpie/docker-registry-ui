@@ -32,7 +32,9 @@ def _parse_time_hhmm(value):
 
 def _resolve_target_registries():
     raw = (Config.MASSIVE_SCAN_REGISTRIES or "all").strip()
-    available = [r.get("name") for r in get_registries() if isinstance(r, dict) and r.get("name")]
+    available = [
+        r.get("name") for r in get_registries() if isinstance(r, dict) and r.get("name")
+    ]
     if raw.lower() == "all":
         return available
 
@@ -55,7 +57,9 @@ def _run_scheduled_job():
     global _status
 
     registries = get_registries()
-    by_name = {r.get("name"): r for r in registries if isinstance(r, dict) and r.get("name")}
+    by_name = {
+        r.get("name"): r for r in registries if isinstance(r, dict) and r.get("name")
+    }
     target_names = _resolve_target_registries()
     if not target_names:
         logger.warning("Scheduled massive scan skipped: no target registries found")
@@ -126,7 +130,9 @@ def start_scheduler_if_enabled():
         _status["running"] = False
         return
 
-    thread = threading.Thread(target=_scheduler_loop, daemon=True, name="massive-scan-scheduler")
+    thread = threading.Thread(
+        target=_scheduler_loop, daemon=True, name="massive-scan-scheduler"
+    )
     thread.start()
     _started = True
     _status["running"] = True

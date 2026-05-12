@@ -116,7 +116,13 @@ class TrivyScanner(VulnerabilityScanner):
             target = result.get("Target", "")
             result_class = result.get("Class", "")
             is_base_target = result_class == "os-pkgs"
-            layer_vulns = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0}
+            layer_vulns = {
+                "CRITICAL": 0,
+                "HIGH": 0,
+                "MEDIUM": 0,
+                "LOW": 0,
+                "UNKNOWN": 0,
+            }
             layer_details = []
 
             for vuln in result.get("Vulnerabilities", []):

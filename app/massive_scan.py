@@ -3,7 +3,12 @@ import re
 from datetime import datetime, timedelta
 
 from .data_store import get_scan_results, store_scan_results
-from .registry import fetch_repositories, fetch_repository_tags, fetch_tag_details, get_auth
+from .registry import (
+    fetch_repositories,
+    fetch_repository_tags,
+    fetch_tag_details,
+    get_auth,
+)
 from .scanners.factory import get_scanner
 from .scanners.trivy import TrivyScanner
 
@@ -109,7 +114,11 @@ def run_massive_scan(registry_name, registry, options=None):
                 continue
             if scan_mode == "never-scanned" and already_scanned:
                 existing = existing_results[key]
-                if existing and not existing.get("error") and existing.get("total", 0) >= 0:
+                if (
+                    existing
+                    and not existing.get("error")
+                    and existing.get("total", 0) >= 0
+                ):
                     skipped_count += 1
                     continue
 
