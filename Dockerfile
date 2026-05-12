@@ -1,7 +1,7 @@
 ###############################
 #        BUILDER STAGE        #
 ###############################
-FROM python:3.13-alpine3.22 AS builder
+FROM python:3.13-alpine3.23 AS builder
 
 WORKDIR /app
 
@@ -34,7 +34,7 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 ###############################
 #        RUNTIME STAGE        #
 ###############################
-FROM python:3.13-alpine3.22 AS runtime
+FROM python:3.13-alpine3.23 AS runtime
 
 WORKDIR /app
 
@@ -52,4 +52,4 @@ COPY asgi.py .
 
 EXPOSE 5000
 
-CMD ["uvicorn", "asgi:app", "--host", "0.0.0.0", "--port", "5000", "--workers", "4", "--log-level", "info", "--access-log"]
+CMD ["uvicorn", "asgi:app", "--host", "0.0.0.0", "--port", "5000", "--workers", "1", "--log-level", "warning", "--no-access-log", "--lifespan", "off"]
