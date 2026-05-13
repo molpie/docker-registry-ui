@@ -25,6 +25,13 @@ function loadSystemStatus() {
       const notifications = data.notifications || {};
       const storage = data.storage || {};
 
+      const formatDateTime = (value) => {
+        if (!value) return "n/a";
+        const dt = new Date(value);
+        if (Number.isNaN(dt.getTime())) return value;
+        return dt.toLocaleString();
+      };
+
       const formatRunSummary = (title, summary) => {
         if (!summary) {
           return `
@@ -39,7 +46,7 @@ function loadSystemStatus() {
           <div class="mt-2 border rounded p-2">
             <div class="d-flex justify-content-between align-items-center mb-1">
               <strong>${title}</strong>
-              <small class="text-muted">${summary.runAt || "n/a"}</small>
+              <small class="text-muted">${formatDateTime(summary.runAt)}</small>
             </div>
             <div class="small">Source: <strong>${summary.source || "n/a"}</strong> ${summary.timezone ? `(${summary.timezone})` : ""}</div>
             <div class="small">Totals: images <strong>${summary.totalImages || 0}</strong>, tags <strong>${summary.totalTags || 0}</strong>, scans <strong>${summary.totalScans || 0}</strong></div>
@@ -59,7 +66,7 @@ function loadSystemStatus() {
         <div class="mb-1"><strong>Repo pattern:</strong> <code>${scheduler.repoPattern || "*"}</code></div>
         <div class="mb-1"><strong>Include all tags:</strong> ${scheduler.includeAllTags ? "Yes" : "No"}</div>
         <div class="mb-1"><strong>Dry run:</strong> ${scheduler.dryRun ? "Yes" : "No"}</div>
-        <div class="mb-1"><strong>Last run at:</strong> ${scheduler.lastRunAt || "Never"}</div>
+        <div class="mb-1"><strong>Last run at:</strong> ${scheduler.lastRunAt ? formatDateTime(scheduler.lastRunAt) : "Never"}</div>
         <div class="mb-1"><strong>Last error:</strong> ${scheduler.lastError || "None"}</div>
         ${formatRunSummary("Current Run", scheduler.lastRunSummary)}
         ${formatRunSummary("Previous Run", scheduler.previousRunSummary)}

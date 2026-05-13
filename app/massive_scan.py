@@ -3,7 +3,12 @@ import fcntl
 import os
 import re
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
+try:
+    from zoneinfo import ZoneInfo
+except Exception:
+    ZoneInfo = None
 
 from .config import Config
 from .data_store import get_scan_results, store_scan_results
@@ -26,6 +31,34 @@ def _scan_in_progress_response(registry_name):
         "code": "massive_scan_in_progress",
         "error": f"Massive scan already in progress for {registry_name}",
     }
+
+
+def _resolve_run_timezone(tz_value):
+    raw = (tz_value or "local").strip()
+    lowered = raw.lower()
+
+    if lowered in ("", "local", "system"):
+        local_tz = datetime.now().astimezone().tzinfo
+        return local_tz, "local"
+
+    if lowered == "utc":
+        return timezone.utc, "UTC"
+
+    if ZoneInfo is not None:
+        try:
+            return ZoneInfo(raw), raw
+        except Exception:
+            logger.warning(
+                f"Invalid run timezone '{raw}', falling back to local timezone"
+            )
+
+    local_tz = datetime.now().astimezone().tzinfo
+    return local_tz, "local"
+
+
+def _now_iso_for_run(tz_value):
+    tzinfo, _ = _resolve_run_timezone(tz_value)
+    return datetime.now(tz=tzinfo).isoformat()
 
 
 def _get_scanner_auth_config(registry):
@@ -105,7 +138,7 @@ def run_massive_scan(registry_name, registry, options=None):
 
             failed_summary = {
                 "registry": registry_name,
-                "runAt": datetime.now().isoformat(),
+                "runAt": _now_iso_for_run(run_timezone),
                 "source": run_source,
                 "timezone": run_timezone,
                 "success": False,
@@ -227,7 +260,7 @@ def run_massive_scan(registry_name, registry, options=None):
 
         run_summary = {
             "registry": registry_name,
-            "runAt": datetime.now().isoformat(),
+            "runAt": _now_iso_for_run(run_timezone),
             "source": run_source,
             "timezone": run_timezone,
             "success": True,

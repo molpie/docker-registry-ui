@@ -42,7 +42,8 @@ function formatSize(bytes) {
 }
 
 function formatTimeAgo(dateString) {
-  const date = new Date(dateString.replace("Z", ""));
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return "unknown";
   const now = new Date();
   const seconds = Math.floor((now - date) / 1000);
 
