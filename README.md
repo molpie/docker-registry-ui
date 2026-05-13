@@ -2,7 +2,7 @@
 
 Modern web interface for managing Docker Registry with vulnerability scanning, bulk operations, and multi-registry support.
 
-[![Docker Pulls](https://img.shields.io/docker/pulls/vibhuvi/docker-registry-ui)](https://github.com/molpie/docker-registry-ui/pkgs/container/docker-registry-ui)
+[![Docker Pulls](https://img.shields.io/docker/pulls/molpie/docker-registry-ui)](https://hub.docker.com/r/molpie/docker-registry-ui)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 [![Open in Gitpod](https://img.shields.io/badge/Gitpod-Ready%20to%20Code-purple?logo=gitpod)](https://gitpod.io/#https://github.com/molpie/docker-registry-ui)
@@ -114,7 +114,7 @@ Access at `http://localhost:5000` - Setup wizard will guide you.
 
 ```bash
 # Clone repository
-git clone https://github.com/vibhuvi/docker-registry-ui.git
+git clone https://github.com/molpie/docker-registry-ui.git
 cd docker-registry-ui
 
 # Start development environment
@@ -152,8 +152,8 @@ Note: The Docker development environment includes the `trivy` binary for vulnera
 
 ## 📦 Versions
 
-[View all versions](https://github.com/molpie/docker-registry-ui/pkgs/container/docker-registry-ui) | Use specific version: `ghcr.io/molpie/docker-registry-ui:v1.0.0`
+[View all versions](https://hub.docker.com/r/molpie/docker-registry-ui) | Use specific version: `docker pull molpie/docker-registry-ui:2.2.0`
 
 ---
 
-**Developed by [Vibhuvi OiO](https://vibhuvioio.com)**, molpie | [GitHub](https://github.com/vibhuvi/docker-registry-ui) | [Docs](https://vibhuvioio.com/docker-registry-ui/) | MIT License
+**Developed by [Vibhuvi OiO](https://vibhuvioio.com)** and **molpie** | [GitHub](https://github.com/molpie/docker-registry-ui) | [Docs](https://vibhuvioio.com/docker-registry-ui/) | MIT License
