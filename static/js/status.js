@@ -25,9 +25,34 @@ function loadSystemStatus() {
       const notifications = data.notifications || {};
       const storage = data.storage || {};
 
+      const formatRunSummary = (title, summary) => {
+        if (!summary) {
+          return `
+            <div class="mt-2">
+              <strong>${title}:</strong>
+              <div class="small text-muted">No data</div>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="mt-2 border rounded p-2">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <strong>${title}</strong>
+              <small class="text-muted">${summary.runAt || "n/a"}</small>
+            </div>
+            <div class="small">Source: <strong>${summary.source || "n/a"}</strong> ${summary.timezone ? `(${summary.timezone})` : ""}</div>
+            <div class="small">Totals: images <strong>${summary.totalImages || 0}</strong>, tags <strong>${summary.totalTags || 0}</strong>, scans <strong>${summary.totalScans || 0}</strong></div>
+            <div class="small">Severities: <span class="text-danger">C ${summary.critical || 0}</span> · <span class="text-warning">H ${summary.high || 0}</span> · <span class="text-info">M ${summary.medium || 0}</span> · <span class="text-secondary">L ${summary.low || 0}</span></div>
+            <div class="small">Execution: scanned <strong>${summary.scanned || 0}</strong>, skipped <strong>${summary.skipped || 0}</strong>, errors <strong>${summary.errors || 0}</strong>, dry-run <strong>${summary.dryRun ? "yes" : "no"}</strong></div>
+          </div>
+        `;
+      };
+
       schedulerEl.innerHTML = `
         <div class="mb-1"><strong>Enabled:</strong> ${scheduler.enabled ? "Yes" : "No"}</div>
-        <div class="mb-1"><strong>Running:</strong> ${scheduler.running ? "Yes" : "No"}</div>
+        <div class="mb-1"><strong>Thread active:</strong> ${scheduler.threadActive ? "Yes" : "No"}</div>
+        <div class="mb-1"><strong>Job in progress:</strong> ${scheduler.jobRunning ? "Yes" : "No"}</div>
         <div class="mb-1"><strong>Schedule:</strong> ${scheduler.scheduleTime || "N/A"} (${scheduler.timezone || "local"})</div>
         <div class="mb-1"><strong>Target registries:</strong> <code>${scheduler.targetRegistries || "all"}</code></div>
         <div class="mb-1"><strong>Mode:</strong> ${scheduler.mode || "all"}</div>
@@ -36,9 +61,8 @@ function loadSystemStatus() {
         <div class="mb-1"><strong>Dry run:</strong> ${scheduler.dryRun ? "Yes" : "No"}</div>
         <div class="mb-1"><strong>Last run at:</strong> ${scheduler.lastRunAt || "Never"}</div>
         <div class="mb-1"><strong>Last error:</strong> ${scheduler.lastError || "None"}</div>
-        <div class="mt-2"><strong>Last summary:</strong><br>
-          <small class="text-muted">${scheduler.lastRunSummary ? JSON.stringify(scheduler.lastRunSummary) : "No runs yet"}</small>
-        </div>
+        ${formatRunSummary("Current Run", scheduler.lastRunSummary)}
+        ${formatRunSummary("Previous Run", scheduler.previousRunSummary)}
       `;
 
       notificationsEl.innerHTML = `

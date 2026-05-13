@@ -11,11 +11,8 @@ from .config import Config
 from .data_store import (
     get_registries,
     get_registry_by_name,
-    cache_repositories,
-    get_cached_repositories,
 )
 from .registry import (
-    format_size,
     fetch_repositories,
     fetch_repository_tags,
     fetch_tag_details,
@@ -40,7 +37,9 @@ api_bp = Blueprint("api", __name__)
 def api_download_vuln_json(registry_name, repo, tag):
     """Download vulnerability scan result as JSON file (normalizzato + raw)"""
     from .data_store import get_scan_results
-    import io, json, datetime
+    import io
+    import json
+    import datetime
     import os
 
     results = get_scan_results(registry_name)
@@ -624,6 +623,8 @@ def api_scan_massive(registry_name):
         data = request.json or {}
         result = run_massive_scan(registry_name, registry, data)
         if not result.get("success"):
+            if result.get("code") == "massive_scan_in_progress":
+                return jsonify(result), 409
             return jsonify(result), 500
 
         # Optional recap for manual run via API
@@ -676,7 +677,7 @@ def api_analytics(registry_name):
                 "avgSize": repo_size // len(tags) if len(tags) > 0 else 0,
             }
         )
-    from .data_store import get_scan_results
+    from .data_store import get_scan_results, get_massive_scan_run_history
     from datetime import datetime, timedelta
 
     scan_results = get_scan_results(registry_name)
@@ -757,6 +758,8 @@ def api_analytics(registry_name):
         reverse=True,
     )[:10]
 
+    massive_scan_trend = get_massive_scan_run_history(registry_name, limit=30)
+
     return jsonify(
         {
             "analytics": analytics,
@@ -785,6 +788,7 @@ def api_analytics(registry_name):
                 "severityTotals": severity_totals,
                 "topRiskRepos": top_risk_repos,
             },
+            "massiveScanTrend": massive_scan_trend,
         }
     )
 

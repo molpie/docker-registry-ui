@@ -50,3 +50,7 @@ build/
 # Development
 registry_ui.py
 start.sh
+
+# Local infrastructure
+.devcontainer/
+.github/

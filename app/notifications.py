@@ -1,5 +1,6 @@
 import logging
 import smtplib
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import requests
@@ -10,18 +11,137 @@ logger = logging.getLogger(__name__)
 
 
 def _build_recap_text(registry_name, scan_result):
-    scanned = scan_result.get("scanned", 0)
-    skipped = scan_result.get("skipped", 0)
-    errors = scan_result.get("errors", 0)
-    dry_run = scan_result.get("dryRun", False)
-    mode = "DRY RUN" if dry_run else "EXECUTED"
+    summary = scan_result.get("runSummary") or scan_result
+
+    scanned = summary.get("scanned", scan_result.get("scanned", 0))
+    skipped = summary.get("skipped", scan_result.get("skipped", 0))
+    errors = summary.get("errors", scan_result.get("errors", 0))
+    total_images = summary.get("totalImages", 0)
+    total_tags = summary.get("totalTags", 0)
+    total_scans = summary.get("totalScans", scanned)
+    critical = summary.get("critical", 0)
+    high = summary.get("high", 0)
+    medium = summary.get("medium", 0)
+    low = summary.get("low", 0)
+
     return (
-        f"Massive scan recap ({mode})\n"
+        "Massive scan recap\n"
         f"Registry: {registry_name}\n"
-        f"Scanned: {scanned}\n"
-        f"Skipped: {skipped}\n"
-        f"Errors: {errors}\n"
+        f"Totals: images {total_images}, tags {total_tags}, scans {total_scans}\n"
+        f"Severities: C {critical} · H {high} · M {medium} · L {low}\n"
+        f"Execution: scanned {scanned}, skipped {skipped}, errors {errors}\n"
     )
+
+
+def _build_top_risk_repositories(scan_result):
+    repo_risk = {}
+
+    for entry in scan_result.get("results", []):
+        if entry.get("status") != "success":
+            continue
+
+        repo = entry.get("repo")
+        if not repo:
+            continue
+
+        row = repo_risk.setdefault(
+            repo,
+            {
+                "repo": repo,
+                "scannedTags": 0,
+                "vulnerableTags": 0,
+                "critical": 0,
+                "high": 0,
+                "total": 0,
+            },
+        )
+
+        row["scannedTags"] += 1
+        result = entry.get("result") or {}
+        summary = result.get("summary") or {}
+        critical = int(summary.get("CRITICAL", 0) or 0)
+        high = int(summary.get("HIGH", 0) or 0)
+        total = int(result.get("total", 0) or 0)
+
+        row["critical"] += critical
+        row["high"] += high
+        row["total"] += total
+        if total > 0:
+            row["vulnerableTags"] += 1
+
+    return sorted(
+        repo_risk.values(),
+        key=lambda r: (r["critical"], r["high"], r["total"]),
+        reverse=True,
+    )[:10]
+
+
+def _build_email_html(registry_name, scan_result):
+    recap = _build_recap_text(registry_name, scan_result).strip().split("\n")
+    top_risk_rows = _build_top_risk_repositories(scan_result)
+
+    table_header = (
+        "<tr>"
+        "<th align='left'>Repository</th>"
+        "<th align='right'>Scanned Tags</th>"
+        "<th align='right'>Vulnerable Tags</th>"
+        "<th align='right'>Critical</th>"
+        "<th align='right'>High</th>"
+        "<th align='right'>Total</th>"
+        "</tr>"
+    )
+
+    table_rows = "".join(
+        (
+            "<tr>"
+            f"<td>{row['repo']}</td>"
+            f"<td align='right'>{row['scannedTags']}</td>"
+            f"<td align='right'>{row['vulnerableTags']}</td>"
+            f"<td align='right'>{row['critical']}</td>"
+            f"<td align='right'>{row['high']}</td>"
+            f"<td align='right'>{row['total']}</td>"
+            "</tr>"
+        )
+        for row in top_risk_rows
+    )
+
+    no_data_row = (
+        "<tr><td colspan='6' align='center'>No scan results available.</td></tr>"
+        if not table_rows
+        else ""
+    )
+
+    recap_html = "".join(f"<p style='margin:0 0 6px 0'>{line}</p>" for line in recap)
+
+    return (
+        "<html><body style='font-family: Arial, sans-serif; font-size: 14px; color: #1f2937;'>"
+        f"{recap_html}"
+        "<p style='margin:16px 0 8px 0; font-weight: 600;'>Top 10 Risk Repositories</p>"
+        "<table border='1' cellpadding='6' cellspacing='0' style='border-collapse: collapse; width: 100%;'>"
+        f"{table_header}{table_rows}{no_data_row}"
+        "</table>"
+        "</body></html>"
+    )
+
+
+def _build_email_text(registry_name, scan_result):
+    top_risk_rows = _build_top_risk_repositories(scan_result)
+    lines = [
+        _build_recap_text(registry_name, scan_result).rstrip(),
+        "",
+        "Top 10 Risk Repositories",
+        "Repository\tScanned Tags\tVulnerable Tags\tCritical\tHigh\tTotal",
+    ]
+
+    for row in top_risk_rows:
+        lines.append(
+            f"{row['repo']}\t{row['scannedTags']}\t{row['vulnerableTags']}\t{row['critical']}\t{row['high']}\t{row['total']}"
+        )
+
+    if not top_risk_rows:
+        lines.append("No scan results available.")
+
+    return "\n".join(lines) + "\n"
 
 
 def send_email_recap(registry_name, scan_result):
@@ -39,11 +159,15 @@ def send_email_recap(registry_name, scan_result):
         )
         return False
 
-    body = _build_recap_text(registry_name, scan_result)
-    msg = MIMEText(body)
+    body_text = _build_email_text(registry_name, scan_result)
+    body_html = _build_email_html(registry_name, scan_result)
+
+    msg = MIMEMultipart("alternative")
     msg["Subject"] = f"[Registry UI] Massive scan recap - {registry_name}"
     msg["From"] = Config.NOTIFY_EMAIL_FROM
     msg["To"] = Config.NOTIFY_EMAIL_TO
+    msg.attach(MIMEText(body_text, "plain"))
+    msg.attach(MIMEText(body_html, "html"))
 
     try:
         with smtplib.SMTP(

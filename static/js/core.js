@@ -11,6 +11,7 @@ let pendingDelete = null;
 let repoSizeChart = null;
 let repoTagChart = null;
 let severityDistributionChart = null;
+let massiveScanTrendChart = null;
 
 function showAlert(message, type = "success") {
   const alert = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">

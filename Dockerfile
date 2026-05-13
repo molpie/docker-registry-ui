@@ -54,4 +54,4 @@ COPY asgi.py .
 
 EXPOSE 5000
 
-CMD ["uvicorn", "asgi:app", "--host", "0.0.0.0", "--port", "5000", "--workers", "1", "--log-level", "warning", "--no-access-log", "--lifespan", "off"]
+CMD ["uvicorn", "asgi:app", "--host", "0.0.0.0", "--port", "5000", "--workers", "4", "--log-level", "info", "--access-log"]

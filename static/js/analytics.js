@@ -60,6 +60,7 @@ function loadAnalytics(registryName) {
       if (repoSizeChart) repoSizeChart.destroy();
       if (repoTagChart) repoTagChart.destroy();
       if (severityDistributionChart) severityDistributionChart.destroy();
+      if (massiveScanTrendChart) massiveScanTrendChart.destroy();
 
       const ctx1 = document.getElementById("repoSizeChart").getContext("2d");
       repoSizeChart = new Chart(ctx1, {
@@ -177,5 +178,88 @@ function loadAnalytics(registryName) {
       document.getElementById("riskRepoTableBody").innerHTML =
         riskHtml ||
         '<tr><td colspan="6" class="text-center text-muted">No scan data available yet</td></tr>';
+
+      const trend = (data.massiveScanTrend || []).slice().reverse();
+      const trendCanvas = document.getElementById("massiveScanTrendChart");
+      if (trendCanvas) {
+        const trendCtx = trendCanvas.getContext("2d");
+        const labels = trend.map((r) => {
+          const dt = new Date(r.runAt || "");
+          if (Number.isNaN(dt.getTime())) return r.runAt || "n/a";
+          return dt.toLocaleString();
+        });
+
+        massiveScanTrendChart = new Chart(trendCtx, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Scans",
+                data: trend.map((r) => r.totalScans || 0),
+                borderColor: "rgba(13, 110, 253, 1)",
+                backgroundColor: "rgba(13, 110, 253, 0.2)",
+                tension: 0.2,
+                yAxisID: "yScans",
+              },
+              {
+                label: "Critical",
+                data: trend.map((r) => r.critical || 0),
+                borderColor: "rgba(220, 53, 69, 1)",
+                backgroundColor: "rgba(220, 53, 69, 0.2)",
+                tension: 0.2,
+                yAxisID: "ySev",
+              },
+              {
+                label: "High",
+                data: trend.map((r) => r.high || 0),
+                borderColor: "rgba(253, 126, 20, 1)",
+                backgroundColor: "rgba(253, 126, 20, 0.2)",
+                tension: 0.2,
+                yAxisID: "ySev",
+              },
+              {
+                label: "Medium",
+                data: trend.map((r) => r.medium || 0),
+                borderColor: "rgba(13, 202, 240, 1)",
+                backgroundColor: "rgba(13, 202, 240, 0.2)",
+                tension: 0.2,
+                yAxisID: "ySev",
+              },
+              {
+                label: "Low",
+                data: trend.map((r) => r.low || 0),
+                borderColor: "rgba(108, 117, 125, 1)",
+                backgroundColor: "rgba(108, 117, 125, 0.2)",
+                tension: 0.2,
+                yAxisID: "ySev",
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              mode: "index",
+              intersect: false,
+            },
+            scales: {
+              yScans: {
+                type: "linear",
+                position: "left",
+                beginAtZero: true,
+                title: { display: true, text: "Scans" },
+              },
+              ySev: {
+                type: "linear",
+                position: "right",
+                beginAtZero: true,
+                grid: { drawOnChartArea: false },
+                title: { display: true, text: "Vulnerabilities" },
+              },
+            },
+          },
+        });
+      }
     });
 }

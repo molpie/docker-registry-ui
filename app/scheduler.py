@@ -1,10 +1,19 @@
 import logging
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
+
+try:
+    from zoneinfo import ZoneInfo
+except Exception:
+    ZoneInfo = None
 
 from .config import Config
-from .data_store import get_registries
+from .data_store import (
+    get_registries,
+    store_massive_scan_run,
+    get_massive_scan_run_history,
+)
 from .massive_scan import run_massive_scan
 from .notifications import send_massive_scan_recap
 
@@ -14,9 +23,12 @@ _last_run_date = None
 _started = False
 _status = {
     "running": False,
+    "threadActive": False,
+    "jobRunning": False,
     "lastRunAt": None,
     "lastRunDate": None,
     "lastRunSummary": None,
+    "previousRunSummary": None,
     "lastNotifications": None,
     "lastError": None,
 }
@@ -28,6 +40,29 @@ def _parse_time_hhmm(value):
         return int(hour), int(minute)
     except Exception:
         return 2, 0
+
+
+def _resolve_scheduler_timezone():
+    raw = (Config.MASSIVE_SCAN_TIMEZONE or "local").strip()
+    lowered = raw.lower()
+
+    if lowered in ("", "local", "system"):
+        local_tz = datetime.now().astimezone().tzinfo
+        return local_tz, "local"
+
+    if lowered == "utc":
+        return timezone.utc, "UTC"
+
+    if ZoneInfo is not None:
+        try:
+            return ZoneInfo(raw), raw
+        except Exception:
+            logger.warning(
+                f"Invalid MASSIVE_SCAN_TIMEZONE '{raw}', falling back to local timezone"
+            )
+
+    local_tz = datetime.now().astimezone().tzinfo
+    return local_tz, "local"
 
 
 def _resolve_target_registries():
@@ -53,7 +88,7 @@ def _build_scan_options():
     }
 
 
-def _run_scheduled_job():
+def _run_scheduled_job(run_at_iso, timezone_label):
     global _status
 
     registries = get_registries()
@@ -67,9 +102,31 @@ def _run_scheduled_job():
         return
 
     options = _build_scan_options()
+    options["source"] = "scheduled"
+    options["timezone"] = timezone_label
     logger.info(
         f"Starting scheduled massive scan for registries: {', '.join(target_names)}"
     )
+
+    aggregate = {
+        "runAt": run_at_iso,
+        "source": "scheduled",
+        "timezone": timezone_label,
+        "registryCount": 0,
+        "totalImages": 0,
+        "totalTags": 0,
+        "totalScans": 0,
+        "scanned": 0,
+        "skipped": 0,
+        "errors": 0,
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "dryRun": Config.MASSIVE_SCAN_DRY_RUN,
+    }
+    skipped_due_to_lock = 0
+
     for name in target_names:
         registry = by_name.get(name)
         if not registry:
@@ -77,46 +134,76 @@ def _run_scheduled_job():
         try:
             result = run_massive_scan(name, registry, options)
             if not result.get("success"):
+                if result.get("code") == "massive_scan_in_progress":
+                    logger.info(
+                        f"Scheduled massive scan skipped for {name}: another worker is already running it"
+                    )
+                    skipped_due_to_lock += 1
+                    continue
                 logger.error(
                     f"Scheduled massive scan failed for {name}: {result.get('error', 'unknown error')}"
                 )
                 _status["lastError"] = result.get("error", "unknown error")
                 continue
             notify_result = send_massive_scan_recap(name, result)
-            _status["lastRunSummary"] = {
-                "registry": name,
-                "scanned": result.get("scanned", 0),
-                "skipped": result.get("skipped", 0),
-                "errors": result.get("errors", 0),
-                "dryRun": result.get("dryRun", False),
-            }
+            summary = result.get("runSummary") or {}
+            aggregate["registryCount"] += 1
+            aggregate["totalImages"] += int(summary.get("totalImages", 0) or 0)
+            aggregate["totalTags"] += int(summary.get("totalTags", 0) or 0)
+            aggregate["totalScans"] += int(summary.get("totalScans", 0) or 0)
+            aggregate["scanned"] += int(result.get("scanned", 0) or 0)
+            aggregate["skipped"] += int(result.get("skipped", 0) or 0)
+            aggregate["errors"] += int(result.get("errors", 0) or 0)
+            aggregate["critical"] += int(summary.get("critical", 0) or 0)
+            aggregate["high"] += int(summary.get("high", 0) or 0)
+            aggregate["medium"] += int(summary.get("medium", 0) or 0)
+            aggregate["low"] += int(summary.get("low", 0) or 0)
             _status["lastNotifications"] = notify_result
             _status["lastError"] = None
         except Exception as e:
             logger.error(f"Scheduled massive scan crashed for {name}: {e}")
             _status["lastError"] = str(e)
 
+    # Avoid replacing the current run summary with an empty/zero aggregate when
+    # this worker only observed lock contention while another worker is executing.
+    if aggregate["registryCount"] == 0 and skipped_due_to_lock > 0:
+        logger.info(
+            "Skipping scheduler summary update: execution already in progress on another worker"
+        )
+        return
+
+    if _status.get("lastRunSummary"):
+        _status["previousRunSummary"] = _status.get("lastRunSummary")
+    _status["lastRunSummary"] = aggregate
+    store_massive_scan_run("__scheduler__", aggregate)
+
 
 def _scheduler_loop():
     global _last_run_date, _status
 
     hour, minute = _parse_time_hhmm(Config.MASSIVE_SCAN_SCHEDULE_TIME)
+    tzinfo, tz_label = _resolve_scheduler_timezone()
     logger.info(
-        f"Massive scan scheduler active: daily at {hour:02d}:{minute:02d} ({Config.MASSIVE_SCAN_TIMEZONE})"
+        f"Massive scan scheduler active: daily at {hour:02d}:{minute:02d} ({tz_label})"
     )
 
     while True:
         try:
-            now = datetime.now()
+            now = datetime.now(tz=tzinfo)
             should_run_now = now.hour == hour and now.minute == minute
             if should_run_now and _last_run_date != now.date():
                 _status["lastRunAt"] = now.isoformat()
-                _run_scheduled_job()
+                _status["jobRunning"] = True
+                try:
+                    _run_scheduled_job(_status["lastRunAt"], tz_label)
+                finally:
+                    _status["jobRunning"] = False
                 _last_run_date = now.date()
                 _status["lastRunDate"] = str(_last_run_date)
         except Exception as e:
             logger.error(f"Scheduler loop error: {e}")
             _status["lastError"] = str(e)
+            _status["jobRunning"] = False
 
         time.sleep(30)
 
@@ -128,6 +215,8 @@ def start_scheduler_if_enabled():
     if not Config.MASSIVE_SCAN_SCHEDULE_ENABLED:
         logger.info("Massive scan scheduler is disabled")
         _status["running"] = False
+        _status["threadActive"] = False
+        _status["jobRunning"] = False
         return
 
     thread = threading.Thread(
@@ -135,15 +224,28 @@ def start_scheduler_if_enabled():
     )
     thread.start()
     _started = True
-    _status["running"] = True
+    _status["threadActive"] = True
+    _status["running"] = False
 
 
 def get_scheduler_status():
     """Return runtime scheduler status for API/UI."""
     hour, minute = _parse_time_hhmm(Config.MASSIVE_SCAN_SCHEDULE_TIME)
+
+    last_summary = _status.get("lastRunSummary")
+    prev_summary = _status.get("previousRunSummary")
+    if not last_summary:
+        history = get_massive_scan_run_history("__scheduler__", limit=2)
+        if history:
+            last_summary = history[0]
+        if len(history) > 1:
+            prev_summary = history[1]
+
     return {
         "enabled": Config.MASSIVE_SCAN_SCHEDULE_ENABLED,
-        "running": _status.get("running", False),
+        "running": _status.get("jobRunning", False),
+        "threadActive": _status.get("threadActive", False),
+        "jobRunning": _status.get("jobRunning", False),
         "scheduleTime": Config.MASSIVE_SCAN_SCHEDULE_TIME,
         "timezone": Config.MASSIVE_SCAN_TIMEZONE,
         "targetRegistries": Config.MASSIVE_SCAN_REGISTRIES,
@@ -153,7 +255,8 @@ def get_scheduler_status():
         "dryRun": Config.MASSIVE_SCAN_DRY_RUN,
         "lastRunAt": _status.get("lastRunAt"),
         "lastRunDate": _status.get("lastRunDate"),
-        "lastRunSummary": _status.get("lastRunSummary"),
+        "lastRunSummary": last_summary,
+        "previousRunSummary": prev_summary,
         "lastNotifications": _status.get("lastNotifications"),
         "lastError": _status.get("lastError"),
         "parsedSchedule": {"hour": hour, "minute": minute},

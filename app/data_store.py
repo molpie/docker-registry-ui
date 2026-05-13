@@ -30,6 +30,35 @@ def _ensure_db():
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS massive_scan_runs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                registry_name TEXT NOT NULL,
+                run_at TEXT NOT NULL,
+                source TEXT,
+                timezone TEXT,
+                dry_run INTEGER DEFAULT 0,
+                success INTEGER DEFAULT 1,
+                total_images INTEGER DEFAULT 0,
+                total_tags INTEGER DEFAULT 0,
+                total_scans INTEGER DEFAULT 0,
+                skipped INTEGER DEFAULT 0,
+                errors INTEGER DEFAULT 0,
+                critical INTEGER DEFAULT 0,
+                high INTEGER DEFAULT 0,
+                medium INTEGER DEFAULT 0,
+                low INTEGER DEFAULT 0,
+                summary_json TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_massive_scan_runs_registry_runat
+            ON massive_scan_runs (registry_name, run_at DESC)
+            """
+        )
         conn.commit()
     finally:
         conn.close()
@@ -307,3 +336,93 @@ def get_scan_results(registry_name, force_refresh=False, ttl_hours=24):
         # (Digest check: handled at scan time)
         valid_results[key] = res
     return valid_results
+
+
+def store_massive_scan_run(registry_name, run_summary):
+    """Persist one massive scan run summary for historical trends."""
+    _ensure_db()
+    now = dt.now().isoformat()
+    summary = run_summary or {}
+
+    conn = sqlite3.connect(Config.DB_PATH)
+    try:
+        conn.execute(
+            """
+            INSERT INTO massive_scan_runs (
+                registry_name, run_at, source, timezone,
+                dry_run, success, total_images, total_tags, total_scans,
+                skipped, errors, critical, high, medium, low, summary_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                registry_name,
+                summary.get("runAt") or now,
+                summary.get("source", "manual"),
+                summary.get("timezone"),
+                1 if summary.get("dryRun", False) else 0,
+                1 if summary.get("success", True) else 0,
+                int(summary.get("totalImages", 0) or 0),
+                int(summary.get("totalTags", 0) or 0),
+                int(summary.get("totalScans", 0) or 0),
+                int(summary.get("skipped", 0) or 0),
+                int(summary.get("errors", 0) or 0),
+                int(summary.get("critical", 0) or 0),
+                int(summary.get("high", 0) or 0),
+                int(summary.get("medium", 0) or 0),
+                int(summary.get("low", 0) or 0),
+                json.dumps(summary),
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_massive_scan_run_history(registry_name, limit=30):
+    """Return latest massive scan runs for one registry."""
+    _ensure_db()
+    conn = sqlite3.connect(Config.DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            """
+            SELECT run_at, source, timezone, dry_run, success,
+                   total_images, total_tags, total_scans,
+                   skipped, errors, critical, high, medium, low,
+                   summary_json
+            FROM massive_scan_runs
+            WHERE registry_name = ?
+            ORDER BY run_at DESC, id DESC
+            LIMIT ?
+            """,
+            (registry_name, int(limit)),
+        ).fetchall()
+    finally:
+        conn.close()
+
+    history = []
+    for row in rows:
+        try:
+            payload = json.loads(row["summary_json"]) if row["summary_json"] else {}
+        except Exception:
+            payload = {}
+        history.append(
+            {
+                "runAt": row["run_at"],
+                "source": row["source"],
+                "timezone": row["timezone"],
+                "dryRun": bool(row["dry_run"]),
+                "success": bool(row["success"]),
+                "totalImages": row["total_images"],
+                "totalTags": row["total_tags"],
+                "totalScans": row["total_scans"],
+                "skipped": row["skipped"],
+                "errors": row["errors"],
+                "critical": row["critical"],
+                "high": row["high"],
+                "medium": row["medium"],
+                "low": row["low"],
+                "summary": payload,
+            }
+        )
+    return history
