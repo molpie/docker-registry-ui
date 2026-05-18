@@ -49,3 +49,5 @@ data/
 .devcontainer/
 .github/
 scripts/
+.agents/
+skills-lock.json

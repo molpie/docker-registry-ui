@@ -6,8 +6,38 @@ from email.mime.text import MIMEText
 import requests
 
 from .config import Config
+from .data_store import get_massive_scan_run_history
 
 logger = logging.getLogger(__name__)
+
+
+def _build_cve_alert_lines(registry_name, scan_result):
+    summary = scan_result.get("runSummary") or scan_result or {}
+    if summary.get("dryRun"):
+        return []
+
+    history = get_massive_scan_run_history(registry_name, limit=2)
+    if len(history) < 2:
+        return []
+
+    prev_summary = history[1]
+    prev_critical = int(prev_summary.get("critical", 0) or 0)
+    prev_high = int(prev_summary.get("high", 0) or 0)
+    curr_critical = int(summary.get("critical", 0) or 0)
+    curr_high = int(summary.get("high", 0) or 0)
+    diff_critical = curr_critical - prev_critical
+    diff_high = curr_high - prev_high
+
+    lines = []
+    if diff_critical > 0:
+        lines.append(
+            f"Alert: Critical CVE increased from {prev_critical} to {curr_critical} (+{diff_critical})"
+        )
+    if diff_high > 0:
+        lines.append(
+            f"Alert: High CVE increased from {prev_high} to {curr_high} (+{diff_high})"
+        )
+    return lines
 
 
 def _build_recap_text(registry_name, scan_result):
@@ -23,6 +53,11 @@ def _build_recap_text(registry_name, scan_result):
     high = summary.get("high", 0)
     medium = summary.get("medium", 0)
     low = summary.get("low", 0)
+    alert_lines = _build_cve_alert_lines(registry_name, scan_result)
+
+    alert_block = ""
+    if alert_lines:
+        alert_block = "".join(f"{line}\n" for line in alert_lines)
 
     return (
         "Massive scan recap\n"
@@ -30,6 +65,7 @@ def _build_recap_text(registry_name, scan_result):
         f"Totals: images {total_images}, tags {total_tags}, scans {total_scans}\n"
         f"Severities: C {critical} · H {high} · M {medium} · L {low}\n"
         f"Execution: scanned {scanned}, skipped {skipped}, errors {errors}\n"
+        f"{alert_block}"
     )
 
 

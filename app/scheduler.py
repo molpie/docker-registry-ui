@@ -172,8 +172,9 @@ def _run_scheduled_job(run_at_iso, timezone_label):
         )
         return
 
-    if _status.get("lastRunSummary"):
-        _status["previousRunSummary"] = _status.get("lastRunSummary")
+    prev_summary = _status.get("lastRunSummary")
+    if prev_summary:
+        _status["previousRunSummary"] = prev_summary
     _status["lastRunSummary"] = aggregate
     store_massive_scan_run("__scheduler__", aggregate)
 
